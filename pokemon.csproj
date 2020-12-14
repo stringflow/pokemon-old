@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="OpenGL.Net" Version="1.0.304"/>
+    <PackageReference Include="SDL2-CS.NetCore" Version="2.0.8"/>
+  </ItemGroup>
+</Project>

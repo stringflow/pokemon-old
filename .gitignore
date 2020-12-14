@@ -1,0 +1,19 @@
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Local History for Visual Studio Code
+.history/
+
+# Output files
+bin/
+obj/
+
+# ROMS/SYMS/DLLS
+roms/
+sym/
+libgambatte.dll
+SDL2.dll
