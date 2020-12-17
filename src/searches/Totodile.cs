@@ -137,7 +137,7 @@ public static class Totodile {
                 Tile = edge.NextTile,
                 EdgeSet = edge.NextEdgeset,
                 WastedFrames = state.WastedFrames + edge.Cost,
-                CanA = edge.Action == Action.StartB ? false : !isA,
+                CanA = edge.Action == Action.StartB ? true : !isA,
             });
             gb.LoadState(oldState);
         }
