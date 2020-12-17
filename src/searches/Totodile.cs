@@ -10,6 +10,7 @@ public class TotodileState {
     public GscTile Tile;
     public int EdgeSet;
     public int WastedFrames;
+    public bool CanA;
 }
 
 // Code heavily plagiarized from: https://github.com/entrpntr/gb-rta-bruteforce/blob/master/src/dabomstew/rta/entei/GSToto.java
@@ -72,9 +73,9 @@ public static class Totodile {
             gb.Hold(Joypad.A | Joypad.B, "CalcMonStats");
             int dvs = gb.CpuRead("wPartyMon1DVs") << 8 | gb.CpuRead(gb.SYM["wPartyMon1DVs"] + 1);
 
-            int atk = dvs >> 12;
-            int def = dvs >> 8;
-            int spd = dvs >> 4;
+            int atk = (dvs >> 12) & 0xf;
+            int def = (dvs >> 8) & 0xf;
+            int spd = (dvs >> 4) & 0xf;
             int spc = dvs & 0xf;
 
             int stars = 0;
@@ -113,7 +114,7 @@ public static class Totodile {
                 starsStr = "[   ]";
             }
 
-            if(stars >= 6) {
+            if(stars == 8) {
                 lock(Writer) {
                     Writer.WriteLine("{0} [{1} cost] {2}- 0x{3:x4}", starsStr, state.WastedFrames, state.Log, dvs);
                     Writer.Flush();
@@ -127,18 +128,22 @@ public static class Totodile {
         foreach(Edge<GscTile> edge in edgeList) {
             if(edge.Cost + state.WastedFrames > MaxCost) continue;
 
+            bool isA = (edge.Action & Action.A) > 0;
+            if(isA && !state.CanA) continue;
+
             int ret = gb.Execute(edge.Action);
             OverworldSearch(gb, new TotodileState {
                 Log = state.Log + edge.Action.LogString() + " ",
                 Tile = edge.NextTile,
                 EdgeSet = edge.NextEdgeset,
                 WastedFrames = state.WastedFrames + edge.Cost,
+                CanA = edge.Action == Action.StartB ? false : !isA,
             });
             gb.LoadState(oldState);
         }
     }
 
-    public static void Test(byte x, byte y, byte hour, byte minute, byte momStep, byte audio, byte frameType, byte menuAccount, byte igt, params Action[] path) {
+    public static void Test(byte x, byte y, byte hour, byte minute, byte momStep, byte audio, byte frameType, byte menuAccount, byte igt, int delay, params Action[] path) {
         MakeSave(x, y, hour, minute, momStep, audio, frameType, menuAccount, igt);
         Gsc gb = new Gsc("roms/pokegold.gbc");
         gb.SetSpeedupFlags(SpeedupFlags.NoSound | SpeedupFlags.NoVideo);
@@ -157,6 +162,9 @@ public static class Totodile {
         gb.AdvanceFrame(Joypad.A);
         gb.Hold(Joypad.Left, "GetJoypad");
         gb.AdvanceFrame(Joypad.Left);
+        for(int i = 0; i < delay; i++) {
+            gb.AdvanceFrame(Joypad.Left);
+        }
         gb.Hold(Joypad.A, "OWPlayerInput");
         gb.Execute(path);
         gb.Inject(Joypad.A);
@@ -272,6 +280,7 @@ public static class Totodile {
                                                             Tile = tile,
                                                             WastedFrames = introCost,
                                                             EdgeSet = 0,
+                                                            CanA = false,
                                                         });
                                                         gb.LoadState(delayState);
                                                         gb.AdvanceFrame(Joypad.Left);
