@@ -8,6 +8,7 @@ public class RbyData {
     public DataList<RbyMove> Moves = new DataList<RbyMove>();
     public DataList<RbyItem> Items = new DataList<RbyItem>();
     public DataList<RbyTileset> Tilesets = new DataList<RbyTileset>();
+    public DataList<RbyTrainerClass> TrainerClasses = new DataList<RbyTrainerClass>();
 
     public RbyData() {
         Charmap = new Charmap("A B C D E F G H I J K L M N O P " +
@@ -33,6 +34,9 @@ public class RbyData {
         Items.IndexCallback = obj => obj.Id;
 
         Tilesets.IndexCallback = obj => obj.Id;
+
+        TrainerClasses.NameCallback = obj => obj.Name;
+        TrainerClasses.IndexCallback = obj => obj.Id;
     }
 }
 
@@ -60,6 +64,10 @@ public class Rby : GameBoy {
         get { return Data.Tilesets; }
     }
 
+    public DataList<RbyTrainerClass> TrainerClasses {
+        get { return Data.TrainerClasses; }
+    }
+
     public Rby(string rom, SpeedupFlags speedupFlags = SpeedupFlags.None) : base("roms/gbc_bios.bin", rom, speedupFlags) {
         if(ParsedROMs.ContainsKey(ROM.GlobalChecksum)) {
             Data = ParsedROMs[ROM.GlobalChecksum];
@@ -69,6 +77,7 @@ public class Rby : GameBoy {
             LoadSpecies();
             LoadItems();
             LoadTilesets();
+            LoadTrainerClasses();
         }
     }
 
@@ -144,6 +153,33 @@ public class Rby : GameBoy {
         for(byte index = 0; index < numTilesets; index++) {
             List<(byte, byte)> collisions = tilePairCollisionsLand.GetValueOrDefault(index, new List<(byte, byte)>());
             Tilesets.Add(new RbyTileset(this, index, collisions, dataStream));
+        }
+    }
+
+    private void LoadTrainerClasses() {
+        const int numTrainerClasses = 47;
+
+        ByteStream nameStream = ROM.From("TrainerNames");
+        ByteStream trainerClassStream = ROM.From("TrainerDataPointers");
+
+        int[] trainerDataOffsets = new int[numTrainerClasses];
+
+        for (int i = 0; i < numTrainerClasses; i++) {
+            trainerDataOffsets[i] = 0x0E << 16 | trainerClassStream.u16le();
+        }
+
+        for (int trainerClass = 0; trainerClass < numTrainerClasses; trainerClass++) {
+            int currentOffset = trainerDataOffsets[trainerClass];
+            int nextTrainerOffset = trainerClass == numTrainerClasses - 1 ? SYM["TrainerAI"] : trainerDataOffsets[trainerClass + 1];
+            int length = nextTrainerOffset - currentOffset;
+
+            if (length == 0) {
+                nameStream.Until(Charmap.Terminator);
+                continue;
+            }
+
+            ByteStream dataStream = ROM.From(trainerDataOffsets[trainerClass]);
+            TrainerClasses.Add(new RbyTrainerClass(this, (byte) (trainerClass + 201), length, dataStream, nameStream));
         }
     }
 }
