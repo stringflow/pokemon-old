@@ -69,7 +69,7 @@ public class GameBoy {
         get { return Libgambatte.gambatte_timenow(Handle); }
     }
 
-    public GameBoy(string biosFile, string romFile) {
+    public GameBoy(string biosFile, string romFile, SpeedupFlags speedupFlags = SpeedupFlags.None) {
         ROM = new ROM(romFile);
         Debug.Assert(ROM.HeaderChecksumMatches(), "Cartridge header checksum mismatch!");
 
@@ -82,6 +82,8 @@ public class GameBoy {
 
         InputGetter = () => CurrentJoypad;
         Libgambatte.gambatte_setinputgetter(Handle, InputGetter);
+
+        SetSpeedupFlags(speedupFlags);
 
         StateSize = Libgambatte.gambatte_savestate(Handle, null, 160, null);
 
