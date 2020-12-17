@@ -6,6 +6,8 @@ public class RbyData {
     public Charmap Charmap;
     public DataList<RbySpecies> Species = new DataList<RbySpecies>();
     public DataList<RbyMove> Moves = new DataList<RbyMove>();
+    public DataList<RbyItem> Items = new DataList<RbyItem>();
+    public DataList<RbyTileset> Tilesets = new DataList<RbyTileset>();
 
     public RbyData() {
         Charmap = new Charmap("A B C D E F G H I J K L M N O P " +
@@ -26,6 +28,11 @@ public class RbyData {
 
         Moves.NameCallback = obj => obj.Name;
         Moves.IndexCallback = obj => obj.IndexNumber;
+
+        Items.NameCallback = obj => obj.Name;
+        Items.IndexCallback = obj => obj.Id;
+
+        Tilesets.IndexCallback = obj => obj.Id;
     }
 }
 
@@ -45,6 +52,14 @@ public class Rby : GameBoy {
         get { return Data.Moves; }
     }
 
+    public DataList<RbyItem> Items {
+        get { return Data.Items; }
+    }
+
+    public DataList<RbyTileset> Tilesets {
+        get { return Data.Tilesets; }
+    }
+
     public Rby(string rom, SpeedupFlags speedupFlags = SpeedupFlags.None) : base("roms/gbc_bios.bin", rom, speedupFlags) {
         if(ParsedROMs.ContainsKey(ROM.GlobalChecksum)) {
             Data = ParsedROMs[ROM.GlobalChecksum];
@@ -52,6 +67,8 @@ public class Rby : GameBoy {
             Data = new RbyData();
             LoadSpecies();
             LoadMoves();
+            LoadItems();
+            LoadTilesets();
         }
     }
 
@@ -96,6 +113,52 @@ public class Rby : GameBoy {
 
         for (int i = 0; i < numMoves; i++) {
             Moves.Add(new RbyMove(this, dataStream, nameStream));
+        }
+    }
+
+    private void LoadItems() {
+        const int numItems = 97;
+
+        ByteStream nameStream = ROM.From("ItemNames");
+        string name;
+
+        for (byte i = 0; i < numItems; i++) {
+            name = Charmap.Decode(nameStream.Until(Charmap.Terminator));
+            Items.Add(new RbyItem(this, i, name));
+        }
+
+        for (int i = 0; i < 256; i++) {
+            if (i >= 0xC4 && i <= 0xC8) {
+                name = String.Format("HM{0}", (i + 1 - 0xc4).ToString("D2"));
+            } else if (i >= 0xC9 && i <= 0xFF) {
+                name = String.Format("TM{0}", (i + 1 - 0xC9).ToString("D2"));
+            } else if (Items[i] == null) {
+                name = String.Format("hex{0:X2}", i);
+            } else {
+                continue;
+            }
+
+            Items.Add(new RbyItem(this, (byte) i, name));
+        }
+    }
+
+    private void LoadTilesets() {
+        Dictionary<byte, List<(byte, byte)>> tilePairCollisionsLand = new Dictionary<byte, List<(byte, byte)>>();
+        ByteStream collisionData = ROM.From("TilePairCollisionsLand");
+
+        byte tileset;
+        while((tileset = collisionData.u8()) != 0xFF) {
+            if (!tilePairCollisionsLand.ContainsKey(tileset)) {
+                tilePairCollisionsLand[tileset] = new List<(byte, byte)>();
+            }
+            tilePairCollisionsLand[tileset].Add((collisionData.u8(), collisionData.u8()));
+        }
+
+        ByteStream dataStream = ROM.From("Tilesets");
+        int numTilesets = GetType() == typeof(Yellow) ? 25 : 24;
+        for (byte index = 0; index < numTilesets; index++) {
+            List<(byte, byte)> collisions = tilePairCollisionsLand.GetValueOrDefault(index, new List<(byte, byte)>());
+            Tilesets.Add(new RbyTileset(this, index, collisions, dataStream));
         }
     }
 }
