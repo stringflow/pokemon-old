@@ -29,10 +29,9 @@ public enum RbyGrowthRate {
     Slow
 }
 
-public class RbySpecies : NamedObject {
+public class RbySpecies : ROMObject {
 
     public Rby Game;
-    public byte IndexNumber;
     public byte PokedexNumber;
     public byte BaseHP;
     public byte BaseAttack;
@@ -47,17 +46,11 @@ public class RbySpecies : NamedObject {
     public byte FrontSpriteHeight;
     public ushort FrontSpritePointer;
     public ushort BackSpritePointer;
-    public RbyMove BaseMove1;
-    public RbyMove BaseMove2;
-    public RbyMove BaseMove3;
-    public RbyMove BaseMove4;
+    public RbyMove[] BaseMoves;
     public RbyGrowthRate GrowthRate;
-    public byte BaseTM;
-    public byte BaseHM;
 
-    public RbySpecies(Rby game, byte indexNumber, ByteStream data, ByteStream name) : base(name.Read(10), game.Charmap) {
+    public RbySpecies(Rby game, byte indexNumber, ByteStream data) : this(game, indexNumber) {
         Game = game;
-        IndexNumber = indexNumber;
         PokedexNumber = data.u8();
         BaseHP = data.u8();
         BaseAttack = data.u8();
@@ -72,19 +65,18 @@ public class RbySpecies : NamedObject {
         FrontSpriteHeight = data.Nybble();
         FrontSpritePointer = data.u16le();
         BackSpritePointer = data.u16le();
-        BaseMove1 = Game.Moves[data.u8()];
-        BaseMove2 = Game.Moves[data.u8()];
-        BaseMove3 = Game.Moves[data.u8()];
-        BaseMove4 = Game.Moves[data.u8()];
+        BaseMoves = new RbyMove[] { Game.Moves[data.u8()],
+                                    Game.Moves[data.u8()],
+                                    Game.Moves[data.u8()],
+                                    Game.Moves[data.u8()] };
         GrowthRate = (RbyGrowthRate) data.u8();
-        BaseTM = data.u8();
-        BaseHM = data.u8();
+        data.Seek(8); // TODO: HMs/TMs
     }
 
     // Missingno data
-    public RbySpecies(Rby game, byte indexNumber, ByteStream name) : base(name.Read(10), game.Charmap) {
-        Name = string.Format("{0}{1:X2}", Name, indexNumber);
+    public RbySpecies(Rby game, byte indexNumber) {
         Game = game;
-        IndexNumber = indexNumber;
+        Name = game.Charmap.Decode(game.ROM.Subarray(game.SYM["MonsterNames"] + (indexNumber - 1) * 10, 10));
+        Id = indexNumber;
     }
 }

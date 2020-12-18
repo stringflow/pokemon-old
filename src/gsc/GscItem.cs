@@ -1,10 +1,10 @@
-public class GscItem : NamedObject {
+public class GscItem : ROMObject {
 
     public Gsc Game;
-    public byte Id;
 
-    public GscItem(Gsc game, byte id, ByteStream name) : base(name.Until(Charmap.Terminator), game.Charmap) {
+    public GscItem(Gsc game, byte id, ByteStream name) {
         Game = game;
+        Name = game.Charmap.Decode(name.Until(Charmap.Terminator));
         Id = id;
     }
 }

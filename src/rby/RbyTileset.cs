@@ -27,8 +27,8 @@ public class RbyTileset {
         Permission = new PermissionSet();
         Permission.Add(data.u8());
 
-        byte collisionBank = (byte) (GetType() == typeof(Yellow) ? 0x01 : 0x00);
-        ByteStream collisionDataStream = game.ROM.From((collisionBank << 16) | CollisionPointer);
+        byte collisionBank = (byte) (game is Yellow ? 0x01 : 0x00);
+        ByteStream collisionDataStream = game.ROM.From(collisionBank << 16 | CollisionPointer);
         List<byte> collData = new List<byte>();
         byte tile;
         while((tile = collisionDataStream.u8()) != 0xFF) {

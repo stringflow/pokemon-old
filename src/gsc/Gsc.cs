@@ -22,10 +22,10 @@ public class GscData {
         Charmap.Map[0x54] = "POKE";
 
         Species.NameCallback = obj => obj.Name;
-        Species.IndexCallback = obj => obj.IndexNumber;
+        Species.IndexCallback = obj => obj.Id;
 
         Moves.NameCallback = obj => obj.Name;
-        Moves.IndexCallback = obj => obj.IndexNumber;
+        Moves.IndexCallback = obj => obj.Id;
 
         Items.NameCallback = obj => obj.Name;
         Items.IndexCallback = obj => obj.Id;

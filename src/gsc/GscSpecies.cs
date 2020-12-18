@@ -50,10 +50,9 @@ public enum GscEggGroup {
     None,
 }
 
-public class GscSpecies : NamedObject {
+public class GscSpecies : ROMObject {
 
     public Gsc Game;
-    public byte IndexNumber;
     public byte BaseHP;
     public byte BaseAttack;
     public byte BaseDefense;
@@ -78,9 +77,10 @@ public class GscSpecies : NamedObject {
     public byte BaseTM;
     public byte BaseHM;
 
-    public GscSpecies(Gsc game, ByteStream data, ByteStream name) : base(name.Read(10), game.Charmap) { // Names are padded to 10 length using terminator characters.
+    public GscSpecies(Gsc game, ByteStream data, ByteStream name) { // Names are padded to 10 length using terminator characters.
         Game = game;
-        IndexNumber = data.u8();
+        Name = game.Charmap.Decode(name.Read(10));
+        Id = data.u8();
         BaseHP = data.u8();
         BaseAttack = data.u8();
         BaseDefense = data.u8();

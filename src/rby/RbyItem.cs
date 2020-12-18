@@ -1,13 +1,11 @@
-public class RbyItem {
+public class RbyItem : ROMObject {
 
     public Rby Game;
-    public byte Id;
-    public string Name;
 
     public RbyItem(Rby game, byte id, string name) {
         Game = game;
-        Id = id;
         Name = name;
+        Id = id;
     }
 }
 

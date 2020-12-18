@@ -34,7 +34,7 @@ public class GscTileset {
         WaterPermissions = new PermissionSet();
         ByteStream collisionData = game.ROM.From("TileCollisionTable");
         for(int i = 0; i < 256; i++) {
-            CollisionPermissions perms = (CollisionPermissions) (collisionData.u8() & 0xf); // Ignore the upper nybble as it only indicates whether the tile is interactable
+            CollisionPermissions perms = (CollisionPermissions) (collisionData.u8() & 0xf); // Ignore the upper nybble as it only indicates whether the tile can be interacted with.
             if(perms == CollisionPermissions.Land) LandPermissions.Add((byte) i);
             else if(perms == CollisionPermissions.Water) WaterPermissions.Add((byte) i);
         }

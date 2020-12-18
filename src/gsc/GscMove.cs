@@ -159,9 +159,9 @@ public enum GscEffect {
     DefenseCurl
 }
 
-public class GscMove : NamedObject {
+public class GscMove : ROMObject {
 
-    public byte IndexNumber;
+    public Gsc Game;
     public GscEffect Effect;
     public byte Power;
     public GscType Type;
@@ -169,8 +169,10 @@ public class GscMove : NamedObject {
     public byte PP;
     public byte EffectChance;
 
-    public GscMove(Gsc game, ByteStream data, ByteStream name) : base(name.Until(Charmap.Terminator), game.Charmap) {
-        IndexNumber = data.u8();
+    public GscMove(Gsc game, ByteStream data, ByteStream name) {
+        Game = game;
+        Name = game.Charmap.Decode(name.Until(Charmap.Terminator));
+        Id = data.u8();
         Effect = (GscEffect) data.u8();
         Power = data.u8();
         Type = (GscType) data.u8();

@@ -89,9 +89,9 @@ public enum RbyEffect {
     Disable,
 }
 
-public class RbyMove : NamedObject {
+public class RbyMove : ROMObject {
 
-    public byte IndexNumber;
+    public Rby Game;
     public byte Animation;
     public RbyEffect Effect;
     public byte Power;
@@ -99,8 +99,10 @@ public class RbyMove : NamedObject {
     public byte Accuracy;
     public byte PP;
 
-    public RbyMove(Rby game, ByteStream data, ByteStream name) : base(name.Until(Charmap.Terminator), game.Charmap) {
-        IndexNumber = Animation = data.u8();
+    public RbyMove(Rby game, ByteStream data, ByteStream name) {
+        Game = game;
+        Name = game.Charmap.Decode(name.Until(Charmap.Terminator));
+        Id = data.u8();
         Effect = (RbyEffect) data.u8();
         Power = data.u8();
         Type = (RbyType) data.u8();

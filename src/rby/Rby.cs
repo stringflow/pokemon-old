@@ -24,10 +24,10 @@ public class RbyData {
         Charmap.Map[0x53] = "<RIVAL";
 
         Species.NameCallback = obj => obj.Name;
-        Species.IndexCallback = obj => obj.IndexNumber;
+        Species.IndexCallback = obj => obj.Id;
 
         Moves.NameCallback = obj => obj.Name;
-        Moves.IndexCallback = obj => obj.IndexNumber;
+        Moves.IndexCallback = obj => obj.Id;
 
         Items.NameCallback = obj => obj.Name;
         Items.IndexCallback = obj => obj.Id;
@@ -65,41 +65,33 @@ public class Rby : GameBoy {
             Data = ParsedROMs[ROM.GlobalChecksum];
         } else {
             Data = new RbyData();
-            LoadSpecies();
             LoadMoves();
+            LoadSpecies();
             LoadItems();
             LoadTilesets();
         }
     }
 
     private void LoadSpecies() {
-        int maxIndexNumber = 190;
+        const int maxIndexNumber = 190;
 
-        int namesStart = SYM["MonsterNames"];
-        int baseStatsStart = SYM["MonBaseStats"];
+        int numBaseStats = (SYM["BaseStatsEnd"] - SYM["BaseStats"]) / (SYM["MonBaseStatsEnd"] - SYM["MonBaseStats"]);
+        byte[] pokedex = ROM.Subarray(SYM["PokedexOrder"], maxIndexNumber);
+        ByteStream data = ROM.From("BaseStats");
 
-        int baseStatsSize = SYM["MonBaseStatsEnd"] - baseStatsStart;
-        int numBaseStats = (SYM["CryData"] - baseStatsStart) / baseStatsSize;
-        byte[] pokedex = ROM.Subarray(SYM["PokedexOrder"], 190);
-
-        for(int index = 0; index < numBaseStats; index++) {
-            int dataOffset = baseStatsStart + index * baseStatsSize;
-            byte indexNumber = (byte) Array.IndexOf(pokedex, ROM[dataOffset]);
-            int nameOffset = namesStart + indexNumber * 10;
-
-            ByteStream dataStream = ROM.From(dataOffset);
-            ByteStream nameStream = ROM.From(nameOffset);
-
-            Species.Add(new RbySpecies(this, ++indexNumber, dataStream, nameStream));
+        for(int i = 0; i < numBaseStats; i++) {
+            byte indexNumber = (byte) Array.IndexOf(pokedex, data.Peek());
+            Species.Add(new RbySpecies(this, ++indexNumber, data));
         }
 
         // Add Mew data
-        Species.Add(new RbySpecies(this, 21, ROM.From(SYM["MewBaseStats"]), ROM.From(namesStart + 20 * 10)));
+        Species.Add(new RbySpecies(this, 21, ROM.From(SYM["MewBaseStats"])));
 
         // Add MISSINGNO data
-        for (int i = 1; i <= maxIndexNumber; i++) {
+        for(int i = 1; i <= maxIndexNumber; i++) {
             if(pokedex[i - 1] == 0) {
-                Species.Add(new RbySpecies(this, (byte) i, ROM.From(namesStart + (i-1) * 10)));
+                RbySpecies species = new RbySpecies(this, (byte) i);
+                Species.Add(new RbySpecies(this, (byte) i));
             }
         }
     }
@@ -111,31 +103,24 @@ public class Rby : GameBoy {
         ByteStream nameStream = ROM.From("MoveNames");
         ByteStream dataStream = ROM.From(movesStart);
 
-        for (int i = 0; i < numMoves; i++) {
+        for(int i = 0; i < numMoves; i++) {
             Moves.Add(new RbyMove(this, dataStream, nameStream));
         }
     }
 
     private void LoadItems() {
-        const int numItems = 97;
-
         ByteStream nameStream = ROM.From("ItemNames");
-        string name;
 
-        for (byte i = 0; i < numItems; i++) {
-            name = Charmap.Decode(nameStream.Until(Charmap.Terminator));
-            Items.Add(new RbyItem(this, i, name));
-        }
-
-        for (int i = 0; i < 256; i++) {
-            if (i >= 0xC4 && i <= 0xC8) {
+        for(int i = 0; i < 256; i++) {
+            string name;
+            if(i > 0x0 && i <= 0x61) {
+                name = Charmap.Decode(nameStream.Until(Charmap.Terminator));
+            } else if(i >= 0xC4 && i <= 0xC8) {
                 name = String.Format("HM{0}", (i + 1 - 0xc4).ToString("D2"));
-            } else if (i >= 0xC9 && i <= 0xFF) {
+            } else if(i >= 0xC9 && i <= 0xFF) {
                 name = String.Format("TM{0}", (i + 1 - 0xC9).ToString("D2"));
-            } else if (Items[i] == null) {
-                name = String.Format("hex{0:X2}", i);
             } else {
-                continue;
+                name = String.Format("hex{0:X2}", i);
             }
 
             Items.Add(new RbyItem(this, (byte) i, name));
@@ -147,8 +132,8 @@ public class Rby : GameBoy {
         ByteStream collisionData = ROM.From("TilePairCollisionsLand");
 
         byte tileset;
-        while((tileset = collisionData.u8()) != 0xFF) {
-            if (!tilePairCollisionsLand.ContainsKey(tileset)) {
+        while((tileset = collisionData.u8()) != 0xff) {
+            if(!tilePairCollisionsLand.ContainsKey(tileset)) {
                 tilePairCollisionsLand[tileset] = new List<(byte, byte)>();
             }
             tilePairCollisionsLand[tileset].Add((collisionData.u8(), collisionData.u8()));
@@ -156,7 +141,7 @@ public class Rby : GameBoy {
 
         ByteStream dataStream = ROM.From("Tilesets");
         int numTilesets = GetType() == typeof(Yellow) ? 25 : 24;
-        for (byte index = 0; index < numTilesets; index++) {
+        for(byte index = 0; index < numTilesets; index++) {
             List<(byte, byte)> collisions = tilePairCollisionsLand.GetValueOrDefault(index, new List<(byte, byte)>());
             Tilesets.Add(new RbyTileset(this, index, collisions, dataStream));
         }
