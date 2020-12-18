@@ -177,4 +177,28 @@ public class Gsc : GameBoy {
 
         return ret;
     }
+
+    public override Font ReadFont() {
+        const int numCols = 16;
+        byte[] gfx = ROM.Subarray("Font", 16 * 8 * 8);
+        Bitmap bitmap = new Bitmap(numCols * 8, gfx.Length / numCols);
+        for(int i = 0; i < gfx.Length; i++) {
+            int xTile = (i / 8 * 8) % bitmap.Width;
+            int yTile = i / bitmap.Width * 8;
+            for(int j = 0; j < 8; j++) {
+                byte col = (byte) ((gfx[i] >> (7 - j) & 0x1) * 0xff);
+                bitmap.SetPixel(xTile + j, yTile + i % 8, col, col, col, col);
+            }
+        }
+
+        bitmap.Save("font.png");
+
+        return new Font {
+            Bitmap = bitmap,
+            CharacterSize = 8,
+            NumCharsPerRow = numCols,
+            Charmap = Data.Charmap,
+            CharmapOffset = 0x80,
+        };
+    }
 }

@@ -14,11 +14,11 @@ public class RbyData {
         Charmap = new Charmap("A B C D E F G H I J K L M N O P " +
                               "Q R S T U V W X Y Z ( ) : ; [ ] " +
                               "a b c d e f g h i j k l m n o p " +
-                              "q r s t u v w x y z E 'd 'l 's 't 'v " +
+                              "q r s t u v w x y z é 'd 'l 's 't 'v " +
                               "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ " +
                               "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ " +
-                              "' _ _ - _ _ ? ! . _ _ _ _ _ _ M " +
-                              "_ * . / , F 0 1 2 3 4 5 6 7 8 9 ");
+                              "' PK MN - 'r 'm ? ! . _ _ _ _ _ _ M " +
+                              "$ * . / , F 0 1 2 3 4 5 6 7 8 9 ");
         Charmap.Map[0x4A] = "PkMn";
         Charmap.Map[0x54] = "POKE";
         Charmap.Map[0x52] = "<PLAYER>";
@@ -156,6 +156,7 @@ public class Rby : GameBoy {
         }
     }
 
+
     private void LoadTrainerClasses() {
         const int numTrainerClasses = 47;
 
@@ -181,5 +182,26 @@ public class Rby : GameBoy {
             ByteStream dataStream = ROM.From(trainerDataOffsets[trainerClass]);
             TrainerClasses.Add(new RbyTrainerClass(this, (byte) (trainerClass + 201), length, dataStream, nameStream));
         }
+
+    public override Font ReadFont() {
+        const int numCols = 16;
+        byte[] gfx = ROM.Subarray("FontGraphics", SYM["FontGraphicsEnd"] - SYM["FontGraphics"]);
+        Bitmap bitmap = new Bitmap(numCols * 8, gfx.Length / numCols);
+        for(int i = 0; i < gfx.Length; i++) {
+            int xTile = (i / 8 * 8) % bitmap.Width;
+            int yTile = i / bitmap.Width * 8;
+            for(int j = 0; j < 8; j++) {
+                byte col = (byte) ((gfx[i] >> (7 - j) & 0x1) * 0xff);
+                bitmap.SetPixel(xTile + j, yTile + i % 8, col, col, col, col);
+            }
+        }
+
+        return new Font {
+            Bitmap = bitmap,
+            CharacterSize = 8,
+            NumCharsPerRow = numCols,
+            Charmap = Data.Charmap,
+            CharmapOffset = 0x80,
+        };
     }
 }

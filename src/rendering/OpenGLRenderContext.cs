@@ -231,6 +231,10 @@ public class OpenGLRenderContext : RenderContext {
         Gl.DrawElements(PrimitiveType.Triangles, count, DrawElementsType.UnsignedInt, IntPtr.Zero);
     }
 
+    public unsafe void ReadBuffer(byte[] dest) {
+        fixed(byte* data = dest) Gl.ReadPixels(0, 0, Renderer.Window.Width, Renderer.Window.Height, OpenGL.PixelFormat.Rgb, PixelType.UnsignedByte, (IntPtr) data);
+    }
+
     public uint CreateTexture() {
         // Allocate a new 2d texture.
         uint tex = Gl.GenTexture();

@@ -4,6 +4,8 @@ using static SDL2.SDL;
 public class Window : IDisposable {
 
     public IntPtr Handle;
+    public int Width;
+    public int Height;
 
     public Window(int width, int height, string title) {
         const uint flags = SDL_INIT_VIDEO;
@@ -13,8 +15,10 @@ public class Window : IDisposable {
             Debug.Error("Failed to initalized SDL2");
         }
 
+        Width = width;
+        Height = height;
         Handle = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WindowFlags.SDL_WINDOW_OPENGL);
-        Renderer.Initialize(Handle);
+        Renderer.Initialize(this);
     }
 
     public void Dispose() {
