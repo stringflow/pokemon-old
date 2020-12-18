@@ -164,11 +164,11 @@ public class Rby : GameBoy {
 
         int[] trainerDataOffsets = new int[numTrainerClasses];
 
-        for (int i = 0; i < numTrainerClasses; i++) {
+        for(int i = 0; i < numTrainerClasses; i++) {
             trainerDataOffsets[i] = 0x0E << 16 | trainerClassStream.u16le();
         }
 
-        for (int trainerClass = 0; trainerClass < numTrainerClasses; trainerClass++) {
+        for(int trainerClass = 0; trainerClass < numTrainerClasses; trainerClass++) {
             int currentOffset = trainerDataOffsets[trainerClass];
             int nextTrainerOffset = trainerClass == numTrainerClasses - 1 ? SYM["TrainerAI"] : trainerDataOffsets[trainerClass + 1];
             int length = nextTrainerOffset - currentOffset;
