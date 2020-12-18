@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System;
 
 public class RbyTileset {
     public Rby Game;
@@ -35,5 +35,17 @@ public class RbyTileset {
         WaterPermissions.Add(0x14);
         WaterPermissions.Add(0x32);
         if(id == 14) WaterPermissions.Add(0x48);
+    }
+
+    public byte[] GetTiles(byte[] blocks, int width) {
+        int length = blocks.Length - blocks.Length % width;
+        byte[] tiles = new byte[length * 4 * 4];
+        for(int i = 0; i < length; i++) {
+            byte[] tiles2 = Game.ROM.Subarray(Bank << 16 | BlockPointer + blocks[i] * 16, 16);
+            for(int j = 0; j < 4; j++) {
+                Array.Copy(tiles2, j * 4, tiles, (i / width) * (width * 4) * 4 + j * (width * 4) + (i % width) * 4, 4);
+            }
+        }
+        return tiles;
     }
 }

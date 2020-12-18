@@ -25,19 +25,19 @@ public static class LZ {
             }
 
             // Bits 5-7 are occupied by control command.
-            int command = (compressed.Peek() & 0b11100000) >> 5;
+            int command = (compressed.Peek() & 0xe0) >> 5;
             int length = 1;
 
             // The long command is used when 5 bits aren't enough.
             if(command == LzLong) {
                 // Bits 2-4 contain the new control code.
-                command = (compressed.Peek() & 0b00011100) >> 2;
+                command = (compressed.Peek() & 0x1c) >> 2;
                 // Bits 0-1 are appended to a new byte as bits 8-9, allowing a 10-bit operand.
-                length += (compressed.u8() & 0b00000011) << 8;
+                length += (compressed.u8() & 0x3) << 8;
                 length += compressed.u8();
             } else {
                 // If not a long command, bits 0-5 contain the command's operand.
-                length += (compressed.u8() & 0b00011111);
+                length += (compressed.u8() & 0x1f);
             }
 
             switch(command) {

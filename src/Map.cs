@@ -36,6 +36,7 @@ public abstract class Tile<T> where T : Tile<T> {
     // 'source' is the ledge tile.
     // 'action' is the action required to hop the ledge.
     public abstract bool IsLedgeHop(T ledgeTile, Action action);
+    public abstract int LedgeCost();
 
     public T Neighbor(Action action) {
         switch(action) {

@@ -22,27 +22,27 @@ public class RbyPokemon {
     }
 
     public byte SleepCounter {
-        get { return (byte) (Status & 0b111); }
+        get { return (byte) (Status & 0x03); }
     }
 
     public bool Poisoned {
-        get { return (Status & (1 << 3)) != 0; }
+        get { return (Status & 0x08) != 0; }
     }
 
     public bool Burned {
-        get { return (Status & (1 << 4)) != 0; }
+        get { return (Status & 0x10) != 0; }
     }
 
     public bool Frozen {
-        get { return (Status & (1 << 5)) != 0; }
+        get { return (Status & 0x20) != 0; }
     }
 
     public bool Paralyzed {
-        get { return (Status & (1 << 6)) != 0; }
+        get { return (Status & 0x30) != 0; }
     }
 
     public bool XAccSetup {
-        get { return (Status2 & (1)) != 0; }
+        get { return (Status2 & 0x01) != 0; }
     }
 
     public override string ToString() {
@@ -72,7 +72,7 @@ public class RbyTrainerClass : ROMObject {
             byte speciesIndex;
 
             while((speciesIndex = data.u8()) != 0x00) {
-                if (format == 0xFF) {
+                if(format == 0xff) {
                     level = speciesIndex;
                     speciesIndex = data.u8();
                 }

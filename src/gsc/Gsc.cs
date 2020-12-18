@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 
 public class GscData {
@@ -144,7 +143,7 @@ public class Gsc : GameBoy {
         GscMap map = Maps[CpuRead("wMapGroup") << 8 | CpuRead("wMapNumber")];
         GscTile current = map[CpuRead("wXCoord"), CpuRead("wYCoord")];
         GscTile target = map[targetX, targetY];
-        List<Action> path = Pathfinding.FindPath(map, 17, current, map.Tileset.LandPermissions, target); // TODO: Bike check
+        List<Action> path = Pathfinding.FindPath(map, current, 17, map.Tileset.LandPermissions, target); // TODO: Bike check
         return Execute(path.ToArray());
     }
 
@@ -187,7 +186,7 @@ public class Gsc : GameBoy {
             int yTile = i / bitmap.Width * 8;
             for(int j = 0; j < 8; j++) {
                 byte col = (byte) ((gfx[i] >> (7 - j) & 0x1) * 0xff);
-                bitmap.SetPixel(xTile + j, yTile + i % 8, col, col, col, col);
+                bitmap.SetPixel(xTile + j, yTile + i & 7, col, col, col, col);
             }
         }
 

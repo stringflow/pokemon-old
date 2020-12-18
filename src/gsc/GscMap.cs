@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 
 public enum GscPalette {
 
@@ -76,7 +75,16 @@ public class GscTile : Tile<GscTile> {
     }
 
     public override bool IsPassable(PermissionSet permissions) {
-        return Map.Sprites[X, Y] == null && permissions.IsAllowed(Collision);
+        GscWarp warp = Map.Warps[X, Y];
+        if(warp != null && !warp.Allowed) return false;
+
+        GscSprite sprite = Map.Sprites[X, Y];
+        if(sprite != null && sprite.MovementFunction != GscSpriteMovement.Wander &&
+                             sprite.MovementFunction != GscSpriteMovement.SwimWander &&
+                             sprite.MovementFunction != GscSpriteMovement.WalkLeftRight &&
+                             sprite.MovementFunction != GscSpriteMovement.WalkUpDown) return false;
+
+        return permissions.IsAllowed(Collision);
     }
 
     public override bool IsLedgeHop(GscTile ledgeTile, Action action) {
@@ -87,6 +95,10 @@ public class GscTile : Tile<GscTile> {
             case Action.Down: return Collision == 0xa3;
             default: return false;
         }
+    }
+
+    public override int LedgeCost() {
+        return 34; // TODO: Fact check this
     }
 }
 
@@ -151,29 +163,29 @@ public class GscMap : Map<GscTile> {
         Warps = new DataList<GscWarp>();
         Warps.PositionCallback = obj => (obj.X, obj.Y);
         byte numWarps = eventsData.u8();
-        for(byte index = 0; index < numWarps; index++) {
-            Warps.Add(new GscWarp(game, this, index, eventsData));
+        for(byte i = 0; i < numWarps; i++) {
+            Warps.Add(new GscWarp(game, this, i, eventsData));
         }
 
         CoordEvents = new DataList<GscCoordEvent>();
         CoordEvents.PositionCallback = obj => (obj.X, obj.Y);
         byte numCoordEvents = eventsData.u8();
-        for(byte index = 0; index < numCoordEvents; index++) {
+        for(byte i = 0; i < numCoordEvents; i++) {
             CoordEvents.Add(new GscCoordEvent(game, this, eventsData));
         }
 
         BGEvents = new DataList<GscBGEvent>();
         BGEvents.PositionCallback = obj => (obj.X, obj.Y);
         byte numBGEvents = eventsData.u8();
-        for(byte index = 0; index < numBGEvents; index++) {
+        for(byte i = 0; i < numBGEvents; i++) {
             BGEvents.Add(new GscBGEvent(game, this, eventsData));
         }
 
         Sprites = new DataList<GscSprite>();
         Sprites.PositionCallback = obj => (obj.X, obj.Y);
         byte numSprites = eventsData.u8();
-        for(byte index = 0; index < numSprites; index++) {
-            Sprites.Add(new GscSprite(game, this, index, eventsData));
+        for(byte i = 0; i < numSprites; i++) {
+            Sprites.Add(new GscSprite(game, this, i, eventsData));
         }
 
         byte[] blocks = game.ROM.Subarray(Blocks, Width * Height);

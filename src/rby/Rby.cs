@@ -4,11 +4,13 @@ using System.Collections.Generic;
 public class RbyData {
 
     public Charmap Charmap;
-    public DataList<RbySpecies> Species = new DataList<RbySpecies>();
     public DataList<RbyMove> Moves = new DataList<RbyMove>();
+    public DataList<RbySpecies> Species = new DataList<RbySpecies>();
     public DataList<RbyItem> Items = new DataList<RbyItem>();
-    public DataList<RbyTileset> Tilesets = new DataList<RbyTileset>();
     public DataList<RbyTrainerClass> TrainerClasses = new DataList<RbyTrainerClass>();
+    public List<RbyLedge> Ledges = new List<RbyLedge>();
+    public DataList<RbyTileset> Tilesets = new DataList<RbyTileset>();
+    public DataList<RbyMap> Maps = new DataList<RbyMap>();
 
     public RbyData() {
         Charmap = new Charmap("A B C D E F G H I J K L M N O P " +
@@ -24,19 +26,21 @@ public class RbyData {
         Charmap.Map[0x52] = "<PLAYER>";
         Charmap.Map[0x53] = "<RIVAL";
 
-        Species.NameCallback = obj => obj.Name;
-        Species.IndexCallback = obj => obj.Id;
-
         Moves.NameCallback = obj => obj.Name;
         Moves.IndexCallback = obj => obj.Id;
+
+        Species.NameCallback = obj => obj.Name;
+        Species.IndexCallback = obj => obj.Id;
 
         Items.NameCallback = obj => obj.Name;
         Items.IndexCallback = obj => obj.Id;
 
-        Tilesets.IndexCallback = obj => obj.Id;
-
         TrainerClasses.NameCallback = obj => obj.Name;
         TrainerClasses.IndexCallback = obj => obj.Id;
+
+        Tilesets.IndexCallback = obj => obj.Id;
+
+        Maps.IndexCallback = obj => obj.Id;
     }
 }
 
@@ -44,28 +48,37 @@ public class Rby : GameBoy {
 
     private static Dictionary<int, RbyData> ParsedROMs = new Dictionary<int, RbyData>();
     public RbyData Data;
+
     public Charmap Charmap {
         get { return Data.Charmap; }
-    }
-
-    public DataList<RbySpecies> Species {
-        get { return Data.Species; }
     }
 
     public DataList<RbyMove> Moves {
         get { return Data.Moves; }
     }
 
+    public DataList<RbySpecies> Species {
+        get { return Data.Species; }
+    }
+
     public DataList<RbyItem> Items {
         get { return Data.Items; }
+    }
+
+    public DataList<RbyTrainerClass> TrainerClasses {
+        get { return Data.TrainerClasses; }
+    }
+
+    public List<RbyLedge> Ledges {
+        get { return Data.Ledges; }
     }
 
     public DataList<RbyTileset> Tilesets {
         get { return Data.Tilesets; }
     }
 
-    public DataList<RbyTrainerClass> TrainerClasses {
-        get { return Data.TrainerClasses; }
+    public DataList<RbyMap> Maps {
+        get { return Data.Maps; }
     }
 
     public Rby(string rom, SpeedupFlags speedupFlags = SpeedupFlags.None) : base("roms/gbc_bios.bin", rom, speedupFlags) {
@@ -76,8 +89,11 @@ public class Rby : GameBoy {
             LoadMoves();
             LoadSpecies();
             LoadItems();
+            LoadTrainerClasses();
+            LoadLedges();
             LoadTilesets();
             LoadTilePairCollisions();
+            LoadMaps();
         }
     }
 
@@ -136,26 +152,6 @@ public class Rby : GameBoy {
         }
     }
 
-    private void LoadTilesets() {
-        ByteStream dataStream = ROM.From("Tilesets");
-        int numTilesets = this is Yellow ? 25 : 24;
-        for(byte index = 0; index < numTilesets; index++) {
-            Tilesets.Add(new RbyTileset(this, index, dataStream));
-        }
-    }
-
-    private void LoadTilePairCollisions() {
-        byte[] data = ROM.From("TilePairCollisionsLand").Until(0xff);
-        for(int i = 0; i < data.Length - 1; i += 3) {
-            Tilesets[data[i]].TilePairCollisionsLand.Add(data[i + 1], data[i + 2]);
-        }
-
-        data = ROM.From("TilePairCollisionsWater").Until(0xff);
-        for(int i = 0; i < data.Length - 1; i += 3) {
-            Tilesets[data[i]].TilePairCollisionsWater.Add(data[i + 1], data[i + 2]);
-        }
-    }
-
     private void LoadTrainerClasses() {
         const int numTrainerClasses = 47;
 
@@ -183,6 +179,46 @@ public class Rby : GameBoy {
         }
     }
 
+    private void LoadTilesets() {
+        int numTilesets = this is Yellow ? 25 : 24;
+        ByteStream dataStream = ROM.From("Tilesets");
+        for(byte i = 0; i < numTilesets; i++) {
+            Tilesets.Add(new RbyTileset(this, i, dataStream));
+        }
+    }
+
+    private void LoadTilePairCollisions() {
+        byte[] data = ROM.From("TilePairCollisionsLand").Until(0xff);
+        for(int i = 0; i < data.Length - 1; i += 3) {
+            Tilesets[data[i]].TilePairCollisionsLand.Add(data[i + 1], data[i + 2]);
+        }
+
+        data = ROM.From("TilePairCollisionsWater").Until(0xff);
+        for(int i = 0; i < data.Length - 1; i += 3) {
+            Tilesets[data[i]].TilePairCollisionsWater.Add(data[i + 1], data[i + 2]);
+        }
+    }
+
+    private void LoadLedges() {
+        byte[] data = ROM.From("LedgeTiles").Until(0xff);
+        for(int i = 0; i < data.Length - 1; i += 4) {
+            Ledges.Add(new RbyLedge() {
+                Source = data[i + 1],
+                Ledge = data[i + 2],
+                ActionRequired = (Action) data[i + 3],
+            });
+        }
+    }
+
+    private void LoadMaps() {
+        int numMaps = this is Yellow ? 249 : 248;
+        ByteStream bankStream = ROM.From("MapHeaderBanks");
+        ByteStream addressStream = ROM.From("MapHeaderPointers");
+        for(byte i = 0; i < numMaps; i++) {
+            Maps.Add(new RbyMap(this, i, ROM.From(bankStream.u8() << 16 | addressStream.u16le())));
+        }
+    }
+
     public override Font ReadFont() {
         const int numCols = 16;
         byte[] gfx = ROM.Subarray("FontGraphics", SYM["FontGraphicsEnd"] - SYM["FontGraphics"]);
@@ -191,8 +227,8 @@ public class Rby : GameBoy {
             int xTile = (i / 8 * 8) % bitmap.Width;
             int yTile = i / bitmap.Width * 8;
             for(int j = 0; j < 8; j++) {
-                byte col = (byte) ((gfx[i] >> (7 - j) & 0x1) * 0xff);
-                bitmap.SetPixel(xTile + j, yTile + i % 8, col, col, col, col);
+                byte col = (byte) ((gfx[i] >> (7 - j) & 1) * 0xff);
+                bitmap.SetPixel(xTile + j, yTile + i & 7, col, col, col, col);
             }
         }
 

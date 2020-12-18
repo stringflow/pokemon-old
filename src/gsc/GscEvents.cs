@@ -1,8 +1,8 @@
 public class GscWarp {
 
     public GscMap Map;
-    public byte X;
     public byte Y;
+    public byte X;
     public byte MapGroup;
     public byte MapNumber;
     public byte Index;
@@ -29,8 +29,8 @@ public class GscWarp {
 public class GscCoordEvent {
 
     public GscMap Map;
-    public byte X;
     public byte Y;
+    public byte X;
     public byte SceneId;
     public ushort ScriptPointer;
 
@@ -61,8 +61,8 @@ public enum GscBGEventType : byte {
 public class GscBGEvent {
 
     public GscMap Map;
-    public byte X;
     public byte Y;
+    public byte X;
     public GscBGEventType Function;
     public ushort ScriptPointer;
 
