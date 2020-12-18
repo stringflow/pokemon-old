@@ -78,6 +78,16 @@ public class GscTile : Tile<GscTile> {
     public override bool IsPassable(PermissionSet permissions) {
         return Map.Sprites[X, Y] == null && permissions.IsAllowed(Collision);
     }
+
+    public override bool IsLedgeHop(GscTile ledgeTile, Action action) {
+        switch(action) {
+            case Action.Right: return Collision == 0xa0;
+            case Action.Left: return Collision == 0xa1;
+            case Action.Up: return Collision == 0xa2;
+            case Action.Down: return Collision == 0xa3;
+            default: return false;
+        }
+    }
 }
 
 public class GscMap : Map<GscTile> {
@@ -167,7 +177,7 @@ public class GscMap : Map<GscTile> {
         }
 
         byte[] blocks = game.ROM.Subarray(Blocks, Width * Height);
-        Tiles = new GscTile[blocks.Length * 2 * 2];
+        Tiles = new GscTile[Width * 2, Height * 2];
         for(int i = 0; i < blocks.Length; i++) {
             byte block = blocks[i];
             for(int j = 0; j < 4; j++) {
@@ -175,7 +185,7 @@ public class GscMap : Map<GscTile> {
                 int tileSpaceIndex = i * 2 + (j & 1) + (j >> 1) * (Width * 2) + (i / Width * 2 * Width);
                 byte xt = (byte) (tileSpaceIndex % (Width * 2));
                 byte yt = (byte) (tileSpaceIndex / (Width * 2));
-                Tiles[tileSpaceIndex] = new GscTile {
+                Tiles[xt, yt] = new GscTile {
                     Map = this,
                     X = xt,
                     Y = yt,
@@ -188,30 +198,14 @@ public class GscMap : Map<GscTile> {
     public override Bitmap Render() {
         byte[] tiles = Tileset.GetTiles(Game.ROM.Subarray(Blocks, Width * Height), Width);
         byte[] gfx = LZ.Decompress(Game.ROM.From(Tileset.GFX));
-        byte[][] pal = new byte[][] {
-                    new byte[] { 232, 232, 232 },
-                    new byte[] { 160, 160, 160 },
-                    new byte[] { 88, 88, 88 },
-                    new byte[] { 16, 16, 16 }};
 
-        Bitmap bitmap = new Bitmap(Width * 2 * 2 * 8, Height * 2 * 2 * 8);
-        int w = Width * 4;
+        byte[] pixels = new byte[tiles.Length * 16];
         for(int i = 0; i < tiles.Length; i++) {
-            byte[] pixels2 = gfx.Subarray(tiles[i] * 16, 16);
-            for(int j = 0; j < 8; j++) {
-                byte top = pixels2[j * 2 + 0];
-                byte bot = pixels2[j * 2 + 1];
-                for(int k = 0; k < 8; k++) {
-                    int idx = ((i / w) * (w * 8) * 8 + j * (w * 8) + (i % w) * 8 + k) * 4;
-                    byte[] col = pal[(byte) (((top >> (7 - k)) & 1) + ((bot >> (7 - k)) & 1) * 2)];
-                    bitmap[idx + 0] = col[0];
-                    bitmap[idx + 1] = col[1];
-                    bitmap[idx + 2] = col[2];
-                    bitmap[idx + 3] = 0xff;
-                }
-            }
+            Array.Copy(gfx, tiles[i] * 16, pixels, i * 16, 16);
         }
 
+        Bitmap bitmap = new Bitmap(Width * 2 * 2 * 8, Height * 2 * 2 * 8);
+        bitmap.Unpack2BPP(pixels);
         return bitmap;
     }
 }

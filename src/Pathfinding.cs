@@ -5,7 +5,7 @@ using System.Linq;
 public static class Pathfinding {
 
     // A simple implementation of Dijkstra's algorithm. (https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm)
-    public static Dictionary<T, int> Dijkstra<T>(Map<T> map, int stepCost, PermissionSet permissions, params T[] destinations) where T : Tile<T> {
+    public static Dictionary<T, int> Dijkstra<T>(Map<T> map, int stepCost, int ledgeCost, PermissionSet permissions, params T[] destinations) where T : Tile<T> {
         Dictionary<T, int> costs = new Dictionary<T, int>();
         Queue<T> tilesToCheck = new Queue<T>();
 
@@ -17,10 +17,17 @@ public static class Pathfinding {
         while(tilesToCheck.Count > 0) {
             T tile = tilesToCheck.Dequeue();
             T[] neighbors = tile.Neighbors();
-            foreach(T neighbor in neighbors) {
+            for(int i = 0; i < neighbors.Length; i++) {
+                T neighbor = neighbors[i];
+                Action action = (Action) (0x10 << i);
                 if(neighbor == null) continue;
-                if(!neighbor.IsPassable(permissions)) continue;
-                // TODO: Add ledge hop logic.
+
+                T ledgeHopDest = neighbor.Neighbor(action);
+                bool ledgeHop = ledgeHopDest != null && ledgeHopDest.IsLedgeHop(neighbor, action.Opposite());
+                if(ledgeHop) {
+                    neighbor = ledgeHopDest;
+                } else if(!neighbor.IsPassable(permissions)) continue;
+
                 int newCost = costs[tile] + stepCost;
                 if(!costs.ContainsKey(neighbor) || costs[neighbor] > newCost) {
                     costs[neighbor] = newCost;
@@ -34,17 +41,17 @@ public static class Pathfinding {
 
     public static void GenerateEdges<T>(Map<T> map, int edgeSet, int stepCost, PermissionSet permissions, Action avaiableActions, params T[] destinations) where T : Tile<T> {
         bool gen2 = map is GscMap;
-        Dictionary<T, int> costs = Dijkstra(map, stepCost, permissions, destinations);
+        Dictionary<T, int> costs = Dijkstra(map, stepCost, stepCost * 2, permissions, destinations); // TODO: ledge cost should be its own thing in gen 1
 
         foreach(T tile in map.Tiles) {
             if(!costs.ContainsKey(tile)) continue;
-            T[] neighbors = tile.Neighbors().Where(n => n != null && costs.ContainsKey(n)).ToArray();
+            T[] neighbors = tile.Destinations().Where(n => n != null && costs.ContainsKey(n)).ToArray();
             // Use the neighbor with the lowest cost as a base line.
             int minCost = neighbors.Min(n => costs[n]);
             foreach(T neighbor in neighbors) {
                 Action action = tile.ActionRequired(neighbor);
                 if((avaiableActions & action) > 0) {
-                    int edgeCost = destinations.Contains(tile)
+                    int edgeCost = neighbors.Contains(tile)
                                                                ? 2 * stepCost // all movement edges from the destination should be 2 * step cost
                                                                : costs[neighbor] - minCost; // Otherwise the cost of each edge depends on how close it is to the base line.
                     tile.AddEdge(edgeSet, new Edge<T> {
@@ -54,7 +61,7 @@ public static class Pathfinding {
                         Cost = edgeCost,
                     });
 
-                    if(gen2) { // Also add the _+A action
+                    if(gen2) { // Also add the A+_ action
                         tile.AddEdge(edgeSet, new Edge<T> {
                             Action = action | Action.A,
                             NextTile = neighbor,
@@ -86,15 +93,13 @@ public static class Pathfinding {
     }
 
     public static List<Action> FindPath<T>(Map<T> map, int stepCost, T start, PermissionSet permissions, params T[] destinations) where T : Tile<T> {
-        Dictionary<T, int> costs = Dijkstra(map, stepCost, permissions, destinations);
-
-        System.Console.WriteLine(map.GetType());
+        Dictionary<T, int> costs = Dijkstra(map, stepCost, stepCost * 2, permissions, destinations);
 
         T current = start;
         List<Action> path = new List<Action>();
         while(!destinations.Contains(current)) {
             // Choose the neighbor with the lowest cost and add the action to the path.
-            T neighbor = current.Neighbors().Where(n => n != null && costs.ContainsKey(n)).OrderBy(n => costs[n]).First();
+            T neighbor = current.Destinations().Where(n => n != null && costs.ContainsKey(n)).OrderBy(n => costs[n]).First();
             path.Add(current.ActionRequired(neighbor));
             current = neighbor;
         }

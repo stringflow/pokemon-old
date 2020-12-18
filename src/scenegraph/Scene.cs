@@ -5,7 +5,7 @@ using System.Collections.Generic;
 public class Scene : IDisposable {
 
     public GameBoy Gb;
-    public List<Component> Components;
+    private List<Component> Components;
     public Window Window;
     public Matrix4x4 Projection;
 
@@ -15,6 +15,11 @@ public class Scene : IDisposable {
         Window = new Window(width, height, "");
         Projection = Matrix4x4.CreateOrthographicOffCenter(0, width, height, 0, -1, 1);
 
+        Renderer.Font = gb.ReadFont();
+        if(Renderer.Font != null) {
+            Renderer.Font.Texture = Renderer.CreateTexture(Renderer.Font.Bitmap);
+        }
+
         gb.Scene = this;
     }
 
@@ -23,6 +28,17 @@ public class Scene : IDisposable {
             c.Dispose(Gb);
         }
         Window.Dispose();
+    }
+
+    public void AddComponent(Component component) {
+        Components.Add(component);
+        component.OnInit(Gb);
+    }
+
+    public void OnAudioReady(int bufferOffset) {
+        foreach(Component c in Components) {
+            c.OnAudioReady(Gb, bufferOffset);
+        }
     }
 
     public void Begin() {
@@ -57,6 +73,8 @@ public abstract class Component {
     public float RenderLayer;
 
     public virtual void Dispose(GameBoy gb) { }
+    public virtual void OnInit(GameBoy gb) { }
+    public virtual void OnAudioReady(GameBoy gb, int bufferOffset) { }
     public virtual void BeginScene(GameBoy gb) { }
     public virtual void Render(GameBoy gb) { }
     public virtual void EndScene(GameBoy gb) { }

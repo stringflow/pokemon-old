@@ -6,8 +6,8 @@ using System.Runtime.CompilerServices;
 public static class Extensions {
 
     // Returns a sub-section of an array starting at 'index' and consisting of 'length' elements.
-    public static byte[] Subarray(this byte[] source, int index, int length) {
-        byte[] subarray = new byte[length];
+    public static T[] Subarray<T>(this T[] source, int index, int length) {
+        T[] subarray = new T[length];
         Array.Copy(source, index, subarray, 0, length);
         return subarray;
     }

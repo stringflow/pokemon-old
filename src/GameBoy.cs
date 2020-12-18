@@ -63,6 +63,7 @@ public class GameBoy {
     public ROM ROM;
     public SYM SYM;
     public Scene Scene;
+    public ulong EmulatedSamples;
 
     // Returns the current cycle-based time counter as dividers. (2^21/sec)
     public int TimeNow {
@@ -95,28 +96,32 @@ public class GameBoy {
     }
 
     // Emulates 'runsamples' number of samples, or until a video frame has to be drawn. (1 sample = 2 cpu cycles)
-    public int RunFor(int runsamples) {
-        int videoFrameDoneSampleCount = Libgambatte.gambatte_runfor(Handle, VideoBuffer, 160, AudioBuffer, ref runsamples);
-        int outsamples = videoFrameDoneSampleCount >= 0 ? BufferSamples + videoFrameDoneSampleCount : BufferSamples + runsamples;
-        BufferSamples += runsamples;
-        BufferSamples -= outsamples;
+    public int RunFor(int samples) {
+        int videoFrameDoneSampleCount = Libgambatte.gambatte_runfor(Handle, VideoBuffer, 160, AudioBuffer, ref samples);
+        EmulatedSamples += (ulong) samples;
+        BufferSamples += samples;
 
         // returns a positive value if a video frame needs to be drawn.
-        if(Scene != null && videoFrameDoneSampleCount >= 0) {
-            Scene.Begin();
-            Scene.Render();
-            Scene.End();
+        if(Scene != null) {
+            Scene.OnAudioReady(samples);
+            if(videoFrameDoneSampleCount >= 0) {
+                Scene.Begin();
+                Scene.Render();
+                Scene.End();
+            }
         }
 
-        return Libgambatte.gambatte_gethitinterruptaddress(Handle);
+        return videoFrameDoneSampleCount;
     }
 
     // Emulates until the next video frame has to be drawn. Returns the hit address.
     public int AdvanceFrame(Joypad joypad = Joypad.None) {
         CurrentJoypad = joypad;
-        int hitaddress = RunFor(SamplesPerFrame - BufferSamples);
+        if(RunFor(SamplesPerFrame - BufferSamples) >= 0 || BufferSamples >= SamplesPerFrame) {
+            BufferSamples = 0;
+        }
         CurrentJoypad = Joypad.None;
-        return hitaddress;
+        return Libgambatte.gambatte_gethitinterruptaddress(Handle);
     }
 
     // Emulates while holding the specified input until the program counter hits one of the specified breakpoints.
@@ -190,6 +195,11 @@ public class GameBoy {
         throw new NotImplementedException();
     }
 
+    // Helper function that executes the specified string path.
+    public int Execute(string path) {
+        return Execute(Array.ConvertAll(path.Split(" "), e => e.ToAction()));
+    }
+
     // Helper functions that translate SYM labels to their respective addresses.
     public int RunUntil(params string[] addrs) {
         return RunUntil(Array.ConvertAll(addrs, e => SYM[e]));
@@ -210,7 +220,12 @@ public class GameBoy {
     // Helper function that creates a basic scene graph with a video buffer component.
     public void Show() {
         Scene s = new Scene(this, 160, 144);
-        s.Components.Add(new VideoBufferComponent(0, 0, 160, 144));
+        s.AddComponent(new VideoBufferComponent(0, 0, 160, 144));
+    }
+
+    // Reads the game's font from the ROM.
+    public virtual Font ReadFont() {
+        return null;
     }
 }
 

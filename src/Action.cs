@@ -11,19 +11,37 @@ public enum Action {
 
 public static class ActionFunctions {
 
+    public static BidirectionalDictionary<Action, string> Actions = new BidirectionalDictionary<Action, string>();
+
+    static ActionFunctions() {
+        Actions[Action.None] = "";
+        Actions[Action.A] = "A";
+        Actions[Action.StartB] = "S_B";
+        Actions[Action.Right] = "R";
+        Actions[Action.Left] = "L";
+        Actions[Action.Up] = "U";
+        Actions[Action.Down] = "D";
+        Actions[Action.Right | Action.A] = "A+R";
+        Actions[Action.Left | Action.A] = "A+L";
+        Actions[Action.Up | Action.A] = "A+U";
+        Actions[Action.Down | Action.A] = "A+D";
+    }
+
     public static string LogString(this Action action) {
-        switch(action) {
-            case Action.Right: return "R";
-            case Action.Left: return "L";
-            case Action.Up: return "U";
-            case Action.Down: return "D";
-            case Action.Right | Action.A: return "A+R";
-            case Action.Left | Action.A: return "A+L";
-            case Action.Up | Action.A: return "A+U";
-            case Action.Down | Action.A: return "A+D";
-            case Action.StartB: return "S_B";
-            case Action.A: return "A";
-            default: return "?";
+        return Actions[action];
+    }
+
+    public static Action ToAction(this string action) {
+        return Actions[action];
+    }
+
+    public static Action Opposite(this Action action) {
+        switch(action & ~Action.A) {
+            case Action.Right: return Action.Left;
+            case Action.Left: return Action.Right;
+            case Action.Up: return Action.Down;
+            case Action.Down: return Action.Up;
+            default: return action;
         }
     }
 }

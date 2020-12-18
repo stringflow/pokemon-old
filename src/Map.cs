@@ -6,12 +6,12 @@ public abstract class Map<T> where T : Tile<T> {
     public byte Width;
     public byte Height;
 
-    public T[] Tiles;
+    public T[,] Tiles;
 
     public T this[int x, int y] {
         get {
             if(x < 0 || y < 0 || x >= Width * 2 || y >= Height * 2) return null;
-            return Tiles[x + y * Width * 2];
+            return Tiles[x, y];
         }
     }
 
@@ -31,6 +31,12 @@ public abstract class Tile<T> where T : Tile<T> {
     public abstract T Up();
     public abstract T Down();
 
+    // Returns whether the tile is a valid ledge hop.
+    // The tile the function is called on is the tile that the player is standing on before the ledge hop.
+    // 'source' is the ledge tile.
+    // 'action' is the action required to hop the ledge.
+    public abstract bool IsLedgeHop(T ledgeTile, Action action);
+
     public T Neighbor(Action action) {
         switch(action) {
             case Action.Right: return Right();
@@ -43,6 +49,16 @@ public abstract class Tile<T> where T : Tile<T> {
 
     public T[] Neighbors() {
         return new T[] { Right(), Left(), Up(), Down() };
+    }
+
+    public T Destination(Action action) {
+        T neighbor = Neighbor(action);
+        if(IsLedgeHop(neighbor, action)) neighbor = neighbor.Neighbor(action);
+        return neighbor;
+    }
+
+    public T[] Destinations() {
+        return new T[] { Destination(Action.Right), Destination(Action.Left), Destination(Action.Up), Destination(Action.Down) };
     }
 
     public Action ActionRequired(T tileToReach) {

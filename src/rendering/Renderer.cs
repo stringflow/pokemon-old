@@ -30,6 +30,16 @@ public enum PixelFormat {
     BGRA,
 }
 
+public class Font {
+
+    public Bitmap Bitmap;
+    public int CharacterSize;
+    public int NumCharsPerRow;
+    public Charmap Charmap;
+    public int CharmapOffset;
+    public uint Texture;
+}
+
 // The graphics API backend interface.
 public interface RenderContext : IDisposable {
 
@@ -49,6 +59,9 @@ public interface RenderContext : IDisposable {
     // Draws an indexed mesh.
     void DrawIndexed(int count);
 
+    // Reads the screen buffer and copies into 'dest'.
+    void ReadBuffer(byte[] dest);
+
     // Creates a 2d texture and returns a handle.
     uint CreateTexture();
     // Uploads new pixel data to a 2d texture given a handle.
@@ -60,6 +73,7 @@ public static class Renderer {
     // Currently used render API and its capabilities.
     public static RenderContext RenderAPI = new OpenGLRenderContext();
     public static RendererCapabilities Capabilities;
+    public static Window Window;
 
     // Maximum number of quads per draw call.
     public const int MaxQuads = 1000;
@@ -70,8 +84,6 @@ public static class Renderer {
 
     // Vertex positions of a quad.
     public static Vector4[] VertexPositions;
-    // Vertex texture coordinates of a quad.
-    public static Vector2[] VertexTexCoords;
     // Vertices that make up the current scene. (CPU side)
     public static Vertex[] Vertices;
 
@@ -90,9 +102,14 @@ public static class Renderer {
     // The camera's projection.
     public static Matrix4x4 Projection;
 
-    public static void Initialize(IntPtr window) {
+    // The font that text is being drawn with.
+    public static Font Font;
+
+    public static void Initialize(Window window) {
+        Window = window;
+
         // Create a new graphics API context and query the capabilities.
-        Capabilities = RenderAPI.CreateContext(window);
+        Capabilities = RenderAPI.CreateContext(window.Handle);
 
         /* 
             Vertex positions of a 2d quad specified in the folling order:
@@ -104,12 +121,6 @@ public static class Renderer {
                                           new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
                                           new Vector4(1.0f, 1.0f, 0.0f, 1.0f),
                                           new Vector4(0.0f, 1.0f, 0.0f, 1.0f)};
-
-        // Texture coordinates positions of a 2d quad specified in the same order as above.
-        VertexTexCoords = new Vector2[] { new Vector2(0.0f, 0.0f),
-                                          new Vector2(1.0f, 0.0f),
-                                          new Vector2(1.0f, 1.0f),
-                                          new Vector2(0.0f, 1.0f)};
 
         Vertices = new Vertex[MaxVerticies];
 
@@ -156,6 +167,10 @@ public static class Renderer {
         RenderAPI.SetViewport(x, y, width, height);
     }
 
+    public static void ReadBuffer(byte[] dest) {
+        RenderAPI.ReadBuffer(dest);
+    }
+
     public static uint CreateTexture() {
         return RenderAPI.CreateTexture();
     }
@@ -165,6 +180,11 @@ public static class Renderer {
         uint tex = RenderAPI.CreateTexture();
         SetTexturePixels(tex, pixels, pitch, format);
         return tex;
+    }
+
+    // Another helper function for quickly creating a 2d texture and assigning it with pixel data.
+    public static uint CreateTexture(Bitmap bitmap) {
+        return CreateTexture(bitmap.Pixels, bitmap.Width, PixelFormat.RGBA);
     }
 
     public static void SetTexturePixels(uint texture, byte[] pixels, int pitch, PixelFormat format) {
@@ -201,14 +221,14 @@ public static class Renderer {
     }
 
     public static void DrawQuad(float x, float y, float renderLayer, float width, float height, uint texture) {
-        DrawQuad(x, y, renderLayer, width, height, texture, Vector4.One);
+        DrawQuad(x, y, renderLayer, width, height, 0, 0, 1, 1, texture, Vector4.One);
     }
 
     public static void DrawQuad(float x, float y, float renderLayer, float width, float height, Vector4 color) {
-        DrawQuad(x, y, renderLayer, width, height, WhiteTexture, color);
+        DrawQuad(x, y, renderLayer, width, height, 0, 0, 1, 1, WhiteTexture, color);
     }
 
-    public static void DrawQuad(float x, float y, float renderLayer, float width, float height, uint texture, Vector4 color) {
+    public static void DrawQuad(float x, float y, float renderLayer, float width, float height, float s, float t, float p, float q, uint texture, Vector4 color) {
         // If the index buffer is full, a new batch must be made.
         if(IndexCount >= MaxIndices) {
             NextBatch();
@@ -238,17 +258,47 @@ public static class Renderer {
             TextureSlots[TextureSlotIndex++] = texture;
         }
 
+        Vector2[] texCoords = new Vector2[] {
+            new Vector2(s, t),
+            new Vector2(p, t),
+            new Vector2(p, q),
+            new Vector2(s, q),
+        };
+
         // Insert the 4 vertices that make out the quad into the vertex buffer.
         for(int i = 0; i < 4; i++) {
             Vertices[VertexIndex++] = new Vertex {
                 Position = Vector4.Transform(Vector4.Transform(VertexPositions[i], transform), Projection),
                 Color = color,
-                TexCoord = VertexTexCoords[i],
+                TexCoord = texCoords[i],
                 TexIndex = (float) texIndex,
             };
         }
 
         // Add 2 triangles to the index count.
         IndexCount += 6;
+    }
+
+    public static void DrawString(string text, float x, float y, float renderLayer, float fontScale, Vector4 color) {
+        float screenSpaceSize = Font.CharacterSize * fontScale;
+        float texCoordWidth = (float) Font.CharacterSize / (float) Font.Bitmap.Width;
+        float texCoordHeight = (float) Font.CharacterSize / (float) Font.Bitmap.Height;
+        foreach(char c in text) {
+            switch(c) {
+                case ' ': break;
+                case '\n':
+                    y += screenSpaceSize;
+                    break;
+                default:
+                    int sheetIndex = Font.Charmap.Map[c.ToString()] - Font.CharmapOffset;
+                    float s = (sheetIndex % Font.NumCharsPerRow) * texCoordWidth;
+                    float t = (sheetIndex / Font.NumCharsPerRow) * texCoordHeight;
+                    float p = s + texCoordWidth;
+                    float q = t + texCoordHeight;
+                    DrawQuad(x, y, renderLayer, screenSpaceSize, screenSpaceSize, s, t, p, q, Font.Texture, color);
+                    break;
+            }
+            x += screenSpaceSize;
+        }
     }
 }
