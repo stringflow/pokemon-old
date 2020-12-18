@@ -14,7 +14,7 @@ using System.Collections.Generic;
         map[3] returns "three"
         map["three"] returns 3
 */
-public class BidirectionalDictionary<T1, T2> {
+public class Map<T1, T2> {
 
     public Dictionary<T1, T2> Forwards = new Dictionary<T1, T2>();
     public Dictionary<T2, T1> Backwards = new Dictionary<T2, T1>();

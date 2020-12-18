@@ -9,14 +9,14 @@ public class RbyTileset {
     public ushort CollisionPointer;
     public byte[] CounterTiles;
     public byte GrassTile;
-    public PermissionSet Permission;
-    public byte[] CollisionData;
-    public List<(byte, byte)> TilePairCollisions;
+    public Map<byte, byte> TilePairCollisionsLand;
+    public Map<byte, byte> TilePairCollisionsWater;
+    public PermissionSet LandPermissions;
+    public PermissionSet WaterPermissions;
 
-    public RbyTileset(Rby game, byte id, List<(byte, byte)> collisions, ByteStream data) {
+    public RbyTileset(Rby game, byte id, ByteStream data) {
         Game = game;
         Id = id;
-        TilePairCollisions = collisions;
 
         Bank = data.u8();
         BlockPointer = data.u16le();
@@ -24,16 +24,16 @@ public class RbyTileset {
         CollisionPointer = data.u16le();
         CounterTiles = data.Read(3);
         GrassTile = data.u8();
-        Permission = new PermissionSet();
-        Permission.Add(data.u8());
+        data.Seek(1);
 
-        byte collisionBank = (byte) (game is Yellow ? 0x01 : 0x00);
-        ByteStream collisionDataStream = game.ROM.From(collisionBank << 16 | CollisionPointer);
-        List<byte> collData = new List<byte>();
-        byte tile;
-        while((tile = collisionDataStream.u8()) != 0xFF) {
-            collData.Add(tile);
-        }
-        CollisionData = collData.ToArray();
+        TilePairCollisionsLand = new Map<byte, byte>();
+        TilePairCollisionsWater = new Map<byte, byte>();
+
+        LandPermissions = new PermissionSet();
+        LandPermissions.AddRange(game.ROM.From((game is Yellow ? 0x01 : 0x00) << 16 | CollisionPointer).Until(0xff));
+        WaterPermissions = new PermissionSet();
+        WaterPermissions.Add(0x14);
+        WaterPermissions.Add(0x32);
+        if(id == 14) WaterPermissions.Add(0x48);
     }
 }

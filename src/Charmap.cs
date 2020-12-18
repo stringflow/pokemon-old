@@ -4,7 +4,7 @@ public class Charmap {
 
     public const byte Terminator = 0x50;
 
-    public BidirectionalDictionary<byte, string> Map = new BidirectionalDictionary<byte, string>();
+    public Map<byte, string> Map = new Map<byte, string>();
 
     public Charmap(string characters) {
         string[] arr = characters.Split(" ");

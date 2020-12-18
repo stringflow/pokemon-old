@@ -11,7 +11,7 @@ public enum Action {
 
 public static class ActionFunctions {
 
-    public static BidirectionalDictionary<Action, string> Actions = new BidirectionalDictionary<Action, string>();
+    public static Map<Action, string> Actions = new Map<Action, string>();
 
     static ActionFunctions() {
         Actions[Action.None] = "";

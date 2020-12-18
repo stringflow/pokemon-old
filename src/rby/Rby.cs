@@ -77,7 +77,7 @@ public class Rby : GameBoy {
             LoadSpecies();
             LoadItems();
             LoadTilesets();
-            LoadTrainerClasses();
+            LoadTilePairCollisions();
         }
     }
 
@@ -137,25 +137,24 @@ public class Rby : GameBoy {
     }
 
     private void LoadTilesets() {
-        Dictionary<byte, List<(byte, byte)>> tilePairCollisionsLand = new Dictionary<byte, List<(byte, byte)>>();
-        ByteStream collisionData = ROM.From("TilePairCollisionsLand");
-
-        byte tileset;
-        while((tileset = collisionData.u8()) != 0xff) {
-            if(!tilePairCollisionsLand.ContainsKey(tileset)) {
-                tilePairCollisionsLand[tileset] = new List<(byte, byte)>();
-            }
-            tilePairCollisionsLand[tileset].Add((collisionData.u8(), collisionData.u8()));
-        }
-
         ByteStream dataStream = ROM.From("Tilesets");
-        int numTilesets = GetType() == typeof(Yellow) ? 25 : 24;
+        int numTilesets = this is Yellow ? 25 : 24;
         for(byte index = 0; index < numTilesets; index++) {
-            List<(byte, byte)> collisions = tilePairCollisionsLand.GetValueOrDefault(index, new List<(byte, byte)>());
-            Tilesets.Add(new RbyTileset(this, index, collisions, dataStream));
+            Tilesets.Add(new RbyTileset(this, index, dataStream));
         }
     }
 
+    private void LoadTilePairCollisions() {
+        byte[] data = ROM.From("TilePairCollisionsLand").Until(0xff);
+        for(int i = 0; i < data.Length - 1; i += 3) {
+            Tilesets[data[i]].TilePairCollisionsLand.Add(data[i + 1], data[i + 2]);
+        }
+
+        data = ROM.From("TilePairCollisionsWater").Until(0xff);
+        for(int i = 0; i < data.Length - 1; i += 3) {
+            Tilesets[data[i]].TilePairCollisionsWater.Add(data[i + 1], data[i + 2]);
+        }
+    }
 
     private void LoadTrainerClasses() {
         const int numTrainerClasses = 47;
@@ -174,7 +173,7 @@ public class Rby : GameBoy {
             int nextTrainerOffset = trainerClass == numTrainerClasses - 1 ? SYM["TrainerAI"] : trainerDataOffsets[trainerClass + 1];
             int length = nextTrainerOffset - currentOffset;
 
-            if (length == 0) {
+            if(length == 0) {
                 nameStream.Until(Charmap.Terminator);
                 continue;
             }
@@ -182,6 +181,7 @@ public class Rby : GameBoy {
             ByteStream dataStream = ROM.From(trainerDataOffsets[trainerClass]);
             TrainerClasses.Add(new RbyTrainerClass(this, (byte) (trainerClass + 201), length, dataStream, nameStream));
         }
+    }
 
     public override Font ReadFont() {
         const int numCols = 16;
