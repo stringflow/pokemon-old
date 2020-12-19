@@ -190,8 +190,6 @@ public class Gsc : GameBoy {
             }
         }
 
-        bitmap.Save("font.png");
-
         return new Font {
             Bitmap = bitmap,
             CharacterSize = 8,

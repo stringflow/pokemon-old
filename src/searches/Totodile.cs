@@ -113,7 +113,7 @@ public static class Totodile {
                 starsStr = "[   ]";
             }
 
-            if(stars == 8) {
+            if(stars >= 0) {
                 lock(Writer) {
                     Writer.WriteLine("{0} [{1} cost] {2}- 0x{3:x4}", starsStr, state.WastedFrames, state.Log, dvs);
                     Writer.Flush();
@@ -142,7 +142,7 @@ public static class Totodile {
         }
     }
 
-    public static void Test(byte x, byte y, byte hour, byte minute, byte momStep, byte audio, byte frameType, byte menuAccount, byte igt, int delay, params Action[] path) {
+    public static void Test(byte x, byte y, byte hour, byte minute, byte momStep, byte audio, byte frameType, byte menuAccount, byte igt, int delay, string path) {
         MakeSave(x, y, hour, minute, momStep, audio, frameType, menuAccount, igt);
         Gsc gb = new Gsc("roms/pokegold.gbc");
         gb.SetSpeedupFlags(SpeedupFlags.NoSound | SpeedupFlags.NoVideo);
@@ -223,8 +223,6 @@ public static class Totodile {
         byte[] audios = { 0xc1, 0xe1 };
 
         int numSavesCompleted = 0;
-        int savesToSkip = 832 - 66;
-        int skippedSaves = 0;
 
         Writer = new StreamWriter("gold_toto_" + DateTime.Now.Ticks + ".txt");
         int numSaves = startTiles.Length * startHours.Length * startMinutes.Length * 2 * 2 * 8 * 2 * 10;
@@ -237,11 +235,6 @@ public static class Totodile {
                             for(byte frameType = 0; frameType <= 7; frameType++) {
                                 for(byte menuAccount = 0; menuAccount <= 1; menuAccount++) {
                                     for(byte igt = 0; igt < 60; igt += 6) {
-                                        if(skippedSaves < savesToSkip) {
-                                            skippedSaves++;
-                                            numSavesCompleted++;
-                                            continue;
-                                        }
                                         int threadIndex;
                                         while((threadIndex = Array.IndexOf(threadsRunning, false)) == -1) {
                                             Thread.Sleep(50);
