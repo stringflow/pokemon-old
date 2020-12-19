@@ -96,14 +96,16 @@ public class GameBoy {
     }
 
     // Emulates 'runsamples' number of samples, or until a video frame has to be drawn. (1 sample = 2 cpu cycles)
-    public int RunFor(int samples) {
-        int videoFrameDoneSampleCount = Libgambatte.gambatte_runfor(Handle, VideoBuffer, 160, AudioBuffer, ref samples);
-        EmulatedSamples += (ulong) samples;
-        BufferSamples += samples;
+    public int RunFor(int runsamples) {
+        int videoFrameDoneSampleCount = Libgambatte.gambatte_runfor(Handle, VideoBuffer, 160, AudioBuffer, ref runsamples);
+        int outsamples = videoFrameDoneSampleCount >= 0 ? BufferSamples + videoFrameDoneSampleCount : BufferSamples + runsamples;
+        BufferSamples += runsamples;
+        BufferSamples -= outsamples;
+        EmulatedSamples += (ulong) outsamples;
 
-        // returns a positive value if a video frame needs to be drawn.
         if(Scene != null) {
-            Scene.OnAudioReady(samples);
+            Scene.OnAudioReady(outsamples);
+            // returns a positive value if a video frame needs to be drawn.
             if(videoFrameDoneSampleCount >= 0) {
                 Scene.Begin();
                 Scene.Render();
@@ -111,17 +113,15 @@ public class GameBoy {
             }
         }
 
-        return videoFrameDoneSampleCount;
+        return Libgambatte.gambatte_gethitinterruptaddress(Handle);
     }
 
     // Emulates until the next video frame has to be drawn. Returns the hit address.
     public int AdvanceFrame(Joypad joypad = Joypad.None) {
         CurrentJoypad = joypad;
-        if(RunFor(SamplesPerFrame - BufferSamples) >= 0 || BufferSamples >= SamplesPerFrame) {
-            BufferSamples = 0;
-        }
+        int hitaddress = RunFor(SamplesPerFrame - BufferSamples);
         CurrentJoypad = Joypad.None;
-        return Libgambatte.gambatte_gethitinterruptaddress(Handle);
+        return hitaddress;
     }
 
     // Emulates while holding the specified input until the program counter hits one of the specified breakpoints.
