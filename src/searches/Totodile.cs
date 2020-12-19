@@ -113,7 +113,7 @@ public static class Totodile {
                 starsStr = "[   ]";
             }
 
-            if(stars >= 0) {
+            if(stars >= 8) {
                 lock(Writer) {
                     Writer.WriteLine("{0} [{1} cost] {2}- 0x{3:x4}", starsStr, state.WastedFrames, state.Log, dvs);
                     Writer.Flush();
