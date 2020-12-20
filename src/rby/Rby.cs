@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 
+// Represents parsed ROM data. The data will only be parsed once and shared across multiple instances of the same game if the ROM's checksums match.
 public class RbyData {
 
     public Charmap Charmap;
@@ -13,6 +14,7 @@ public class RbyData {
     public DataList<RbyMap> Maps = new DataList<RbyMap>();
 
     public RbyData() {
+        // See https://github.com/pret/pokered/blob/master/charmap.asm
         Charmap = new Charmap("A B C D E F G H I J K L M N O P " +
                               "Q R S T U V W X Y Z ( ) : ; [ ] " +
                               "a b c d e f g h i j k l m n o p " +
@@ -46,7 +48,9 @@ public class RbyData {
 
 public class Rby : GameBoy {
 
+    // Maps ROM checksums to their parsed data.
     private static Dictionary<int, RbyData> ParsedROMs = new Dictionary<int, RbyData>();
+
     public RbyData Data;
 
     public Charmap Charmap {
@@ -82,9 +86,11 @@ public class Rby : GameBoy {
     }
 
     public Rby(string rom, SpeedupFlags speedupFlags = SpeedupFlags.None) : base("roms/gbc_bios.bin", rom, speedupFlags) {
+        // If a ROM with the same checksum has already been parsed, the data will be shared.
         if(ParsedROMs.ContainsKey(ROM.GlobalChecksum)) {
             Data = ParsedROMs[ROM.GlobalChecksum];
         } else {
+            // Otherwise the new ROM will be parsed.
             Data = new RbyData();
             LoadMoves();
             LoadSpecies();
@@ -94,6 +100,7 @@ public class Rby : GameBoy {
             LoadTilesets();
             LoadTilePairCollisions();
             LoadMaps();
+            ParsedROMs[ROM.GlobalChecksum] = Data;
         }
     }
 

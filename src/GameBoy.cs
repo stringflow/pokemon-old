@@ -223,7 +223,7 @@ public class GameBoy {
         s.AddComponent(new VideoBufferComponent(0, 0, 160, 144));
     }
 
-    // Reads the game's font from the ROM.
+    // Reads the game's font from the ROM. Each game overrides this function and implements it in its own way.
     public virtual Font ReadFont() {
         return null;
     }

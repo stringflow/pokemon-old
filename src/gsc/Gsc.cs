@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 
+// Represents parsed ROM data. The data will only be parsed once and shared across multiple instances of the same game if the ROM's checksums match.
 public class GscData {
 
     public Charmap Charmap;
@@ -10,6 +11,7 @@ public class GscData {
     public DataList<GscMap> Maps = new DataList<GscMap>();
 
     public GscData() {
+        // See https://github.com/pret/pokegold/blob/master/charmap.asm
         Charmap = new Charmap("A B C D E F G H I J K L M N O P " +
                               "Q R S T U V W X Y Z ( ) : ; [ ] " +
                               "a b c d e f g h i j k l m n o p " +
@@ -37,6 +39,7 @@ public class GscData {
 
 public class Gsc : GameBoy {
 
+    // Maps ROM checksums to their parsed data.
     private static Dictionary<int, GscData> ParsedROMs = new Dictionary<int, GscData>();
 
     public GscData Data;
@@ -66,9 +69,11 @@ public class Gsc : GameBoy {
     }
 
     public Gsc(string rom) : base("roms/gbc_bios.bin", rom) {
+        // If a ROM with the same checksum has already been parsed, the data will be shared.
         if(ParsedROMs.ContainsKey(ROM.GlobalChecksum)) {
             Data = ParsedROMs[ROM.GlobalChecksum];
         } else {
+            // Otherwise the new ROM will be parsed.
             Data = new GscData();
             LoadSpecies();
             LoadMoves();

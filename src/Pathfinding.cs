@@ -6,46 +6,66 @@ using System.Linq;
 public static class Pathfinding {
 
     public static Dictionary<T, List<(Action, int)>> Dijkstra<T>(Map<T> map, int stepCost, PermissionSet permissions, params T[] destinations) where T : Tile<T> {
-        // A simple implementation of Dijkstra's algorithm. (https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm)
         Dictionary<T, int> costs = new Dictionary<T, int>();
         Queue<T> tilesToCheck = new Queue<T>();
 
+        // A modified implementation of Dijkstra's algorithm. (https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm)
+        // Each tile is given a value representing the distance from destination. (also called the tile's 'cost')
+        // Meaning the goal tile is 0, the four tiles around it have the value 17, their neighbors have the value 34, etc.
+        // The goal tiles are the starting points for this implementation of the  algorithm. (It kind of searches in reverse)
         foreach(T destionation in destinations) {
             costs[destionation] = 0;
             tilesToCheck.Enqueue(destionation);
         }
 
+        // While there are tiles to check in the queue.
         while(tilesToCheck.Count > 0) {
-            T tile = tilesToCheck.Dequeue();
-            T[] neighbors = tile.Neighbors();
+            // Dequeue the first tile in the queue.
+            T current = tilesToCheck.Dequeue();
+            T[] neighbors = current.Neighbors();
             for(int i = 0; i < neighbors.Length; i++) {
                 T neighbor = neighbors[i];
-                Action action = (Action) (0x10 << i);
                 if(neighbor == null) continue;
 
+                Action action = (Action) (0x10 << i);
+                // Ledge hops have to be checked in reverse since the goal tiles are our starting points.
+                // In case of a ledge hop, 'current' would be the tile the player stands on upon completing the hop,
+                // 'neighbor' would be the ledge tile, and 'ledgeHopDest' would be the tile the player starts the hop on. 
+                // (it's called dest in this code because again, working in reverse)
                 T ledgeHopDest = neighbor.Neighbor(action);
-                // Ledge hops have to be checked in reverse
+                // Checks if this actually is a ledge hop.
                 bool ledgeHop = ledgeHopDest != null && ledgeHopDest.IsLedgeHop(neighbor, action.Opposite());
                 if(ledgeHop) {
+                    // If it is, the 'ledgeHopDest' is our new destination for this edge.
                     neighbor = ledgeHopDest;
-                } else if(!neighbor.IsPassable(permissions)) continue;
+                } else if(!neighbor.IsPassable(permissions)) continue; // If it isn't a ledge hop, check if the tile is passable given the permissions provided.
+                                                                       // Ledge hops can skip this step as they are always passable.
 
-                int newCost = costs[tile] + (ledgeHop ? tile.LedgeCost() : stepCost);
+                // The cost of reaching the neighboring tile is the cost of the current tile plus the cost of the step. (either the ledge hop cost or the step cost)
+                int newCost = costs[current] + (ledgeHop ? current.LedgeCost() : stepCost);
+                // If the neighboring tile has never been explored yet or the cost of reaching the tile using this route is lower than the previous fastest path...
                 if(!costs.ContainsKey(neighbor) || costs[neighbor] > newCost) {
+                    // register the new cost and put the tile into the queue to check its neighbors.
                     costs[neighbor] = newCost;
                     tilesToCheck.Enqueue(neighbor);
                 }
             }
         }
 
+        // After building up the grid of costs, the exact edge costs need to be figured out.
+        // If you were to use the grid of costs as edge costs, ledge hops would never be the fastest option since
+        // it doesn't take into account the consequences of the route multiple steps down the road.
         Dictionary<T, List<(Action, int)>> edgeCosts = new Dictionary<T, List<(Action, int)>>();
 
+        // For each tile that was reached by the code above...
         foreach(T tile in costs.Keys) {
             edgeCosts[tile] = new List<(Action, int)>();
+            // Find all the neighbors that were also reached by the code above.
             T[] neighbors = tile.Destinations().Where(n => n != null && costs.ContainsKey(n)).ToArray();
             foreach(T neighbor in neighbors) {
                 Action action = tile.ActionRequired(neighbor);
                 // edgeCost = (thereCost - hereCost) + stepCost
+                // So if the tiles on the path have costs of 51 then 34 (approaching destination), it'd be (34 - 51) + 17 = 0.
                 int edgeCost = (costs[neighbor] - costs[tile]) + (Math.Abs(neighbor.X - tile.X) > 1 || Math.Abs(neighbor.Y - tile.Y) > 1 ? tile.LedgeCost() : stepCost);
                 edgeCosts[tile].Add((action, edgeCost));
             }
