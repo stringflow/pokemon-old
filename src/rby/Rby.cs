@@ -226,6 +226,10 @@ public class Rby : GameBoy {
         }
     }
 
+    public override void Inject(Joypad joypad) {
+        CpuWrite("hJoyInput", (byte) joypad);
+    }
+
     public override Font ReadFont() {
         const int numCols = 16;
         byte[] gfx = ROM.Subarray("FontGraphics", SYM["FontGraphicsEnd"] - SYM["FontGraphics"]);

@@ -74,8 +74,6 @@ public class GscSpecies : ROMObject {
     public GscGrowthRate GrowthRate;
     public GscEggGroup EggGroup1;
     public GscEggGroup EggGroup2;
-    public byte BaseTM;
-    public byte BaseHM;
 
     public GscSpecies(Gsc game, ByteStream data, ByteStream name) { // Names are padded to 10 length using terminator characters.
         Game = game;
@@ -103,7 +101,6 @@ public class GscSpecies : ROMObject {
         GrowthRate = (GscGrowthRate) data.u8();
         EggGroup1 = (GscEggGroup) data.Nybble();
         EggGroup2 = (GscEggGroup) data.Nybble();
-        BaseTM = data.u8();
-        BaseHM = data.u8();
+        data.Seek(8); // TODO: HMs/TMs
     }
 }

@@ -43,8 +43,8 @@ public enum Joypad : byte {
     Start = 0x8,
     Right = 0x10,
     Left = 0x20,
-    Up = 0x30,
-    Down = 0x40,
+    Up = 0x40,
+    Down = 0x80,
     All = 0xff,
 }
 

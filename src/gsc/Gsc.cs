@@ -68,7 +68,7 @@ public class Gsc : GameBoy {
         get { return Data.Maps; }
     }
 
-    public Gsc(string rom) : base("roms/gbc_bios.bin", rom) {
+    public Gsc(string rom, SpeedupFlags flags = SpeedupFlags.None) : base("roms/gbc_bios.bin", rom, flags) {
         // If a ROM with the same checksum has already been parsed, the data will be shared.
         if(ParsedROMs.ContainsKey(ROM.GlobalChecksum)) {
             Data = ParsedROMs[ROM.GlobalChecksum];
@@ -108,8 +108,9 @@ public class Gsc : GameBoy {
     }
 
     private void LoadTilesets() {
+        int numTilesets = this is Crystal ? 37 : 29;
         ByteStream dataStream = ROM.From("Tilesets");
-        for(int index = 0; index < 29; index++) {
+        for(int index = 0; index < numTilesets; index++) {
             Tilesets.Add(new GscTileset(this, (byte) index, dataStream));
         }
     }
