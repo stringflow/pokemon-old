@@ -223,6 +223,7 @@ public static class Totodile {
         byte[] audios = { 0xc1, 0xe1 };
 
         int numSavesCompleted = 0;
+        int savesToSkip = 832 - 66;
 
         Writer = new StreamWriter("gold_toto_" + DateTime.Now.Ticks + ".txt");
         int numSaves = startTiles.Length * startHours.Length * startMinutes.Length * 2 * 2 * 8 * 2 * 10;
@@ -235,6 +236,11 @@ public static class Totodile {
                             for(byte frameType = 0; frameType <= 7; frameType++) {
                                 for(byte menuAccount = 0; menuAccount <= 1; menuAccount++) {
                                     for(byte igt = 0; igt < 60; igt += 6) {
+                                        if(numSavesCompleted < savesToSkip) {
+                                            numSavesCompleted++;
+                                            Console.WriteLine("Skipping save " + numSavesCompleted);
+                                            continue;
+                                        }
                                         int threadIndex;
                                         while((threadIndex = Array.IndexOf(threadsRunning, false)) == -1) {
                                             Thread.Sleep(50);
