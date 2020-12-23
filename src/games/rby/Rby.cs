@@ -235,7 +235,7 @@ public class Rby : GameBoy {
             do {
                 RunFor(1);
                 RunUntil("Joypad");
-            } while((CpuRead(SYM["wd30"]) & (1 << 5)) != 0);
+            } while((CpuRead(SYM["wd730"]) & 0x20) != 0);
             Inject(joypad);
             AdvanceFrame();
         }
@@ -250,14 +250,14 @@ public class Rby : GameBoy {
                 case Action.Right:
                 case Action.Up:
                 case Action.Down:
-                    Joypad joypad = (Joypad) ((byte) action << 4);
+                    Joypad joypad = (Joypad) ((byte) action);
                     do {
                         RunUntil("JoypadOverworld");
                         Inject(joypad);
                         ret = Hold(joypad, SYM["CollisionCheckOnLand.collision"], SYM["CollisionCheckOnWater.collision"], SYM["TryDoWildEncounter.CanEncounter"] + 6, SYM["OverworldLoopLessDelay.newBattle"] + 3);
                         if(ret == SYM["TryDoWildEncounter.CanEncounter"] + 6) {
                             return RunUntil("CalcStats");
-                        } else if(ret == SYM["CollisionCheckOnWater.collision"]) {
+                        } else if(ret == SYM["CollisionCheckOnLand.collision"] || ret == SYM["CollisionCheckOnWater.collision"]) {
                             return ret;
                         }
 
@@ -269,9 +269,6 @@ public class Rby : GameBoy {
                     Inject(Joypad.A);
                     AdvanceFrame(Joypad.A);
                     ret = Hold(Joypad.A, "JoypadOverworld", "PrintLetterDelay");
-                    if(ret == SYM["PrintLetterDelay"]) {
-                        return ret;
-                    }
                     break;
                 case Action.StartB:
                     Press(Joypad.Start, Joypad.B);
