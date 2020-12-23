@@ -3,6 +3,8 @@ public enum Action {
     None = 0,
     A = 0x1,
     StartB = 0x2,
+    PokedexFlash = 0x4,
+    Delay = 0x8,
     Right = 0x10,
     Left = 0x20,
     Up = 0x40,
@@ -17,6 +19,8 @@ public static class ActionFunctions {
         Actions[Action.None] = "";
         Actions[Action.A] = "A";
         Actions[Action.StartB] = "S_B";
+        Actions[Action.PokedexFlash] = "S_A_B_S";
+        Actions[Action.Delay] = "Del";
         Actions[Action.Right] = "R";
         Actions[Action.Left] = "L";
         Actions[Action.Up] = "U";
