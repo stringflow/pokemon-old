@@ -235,7 +235,7 @@ public class Rby : GameBoy {
             do {
                 RunFor(1);
                 RunUntil("Joypad");
-            } while ((CpuRead(SYM["wd30"]) & (1 << 5)) != 0);
+            } while((CpuRead(SYM["wd30"]) & (1 << 5)) != 0);
             Inject(joypad);
             AdvanceFrame();
         }
