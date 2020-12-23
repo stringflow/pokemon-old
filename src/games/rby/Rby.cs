@@ -116,8 +116,9 @@ public class Rby : GameBoy {
             Species.Add(new RbySpecies(this, ++indexNumber, data));
         }
 
-        // Add Mew data
-        Species.Add(new RbySpecies(this, 21, ROM.From(SYM["MewBaseStats"])));
+        if(this is RedBlue) {
+            Species.Add(new RbySpecies(this, 21, ROM.From(SYM["MewBaseStats"])));
+        }
 
         // Add MISSINGNO data
         for(int i = 1; i <= maxIndexNumber; i++) {
