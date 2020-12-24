@@ -152,9 +152,9 @@ public class RbyMap : Map<RbyTile> {
             RbySprite sprite = new RbySprite(game, this, i, objectData);
             Sprites.Add(sprite);
             if(sprite.IsTrainer) {
-                data.Seek(2);
+                objectData.Seek(2);
             } else if(sprite.IsItem) {
-                data.Seek(1);
+                objectData.Seek(1);
             }
         }
 
