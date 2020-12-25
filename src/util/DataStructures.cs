@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 /*
@@ -59,23 +60,26 @@ public class Map<T1, T2> {
     A List that can be indexed through different attributes.
     TODO: Perhaps a better way of doing this is via attributes
 */
-public class DataList<T> {
+public class DataList<T> : IEnumerable<T> {
 
     public Func<T, string> NameCallback;
     public Func<T, int> IndexCallback;
     public Func<T, (int, int)> PositionCallback;
 
+    public List<T> Elements = new List<T>();
     public Dictionary<string, T> Names = new Dictionary<string, T>();
     public Dictionary<int, T> Indices = new Dictionary<int, T>();
     public Dictionary<(int, int), T> Positions = new Dictionary<(int, int), T>();
 
     public void Add(T value) {
+        Elements.Add(value);
         if(NameCallback != null) Names[NameCallback(value)] = value;
         if(IndexCallback != null) Indices[IndexCallback(value)] = value;
         if(PositionCallback != null) Positions[PositionCallback(value)] = value;
     }
 
     public void Remove(T value) {
+        Elements.Remove(value);
         if(NameCallback != null) Names.Remove(NameCallback(value));
         if(IndexCallback != null) Indices.Remove(IndexCallback(value));
         if(PositionCallback != null) Positions.Remove(PositionCallback(value));
@@ -101,6 +105,14 @@ public class DataList<T> {
 
     public void Remove(int x, int y) {
         Remove((x, y));
+    }
+
+    public IEnumerator<T> GetEnumerator() {
+        return Elements.GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator() {
+        throw new NotImplementedException();
     }
 
     public T this[string str] {

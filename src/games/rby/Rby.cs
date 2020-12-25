@@ -242,7 +242,7 @@ public class Rby : GameBoy {
         }
     }
 
-    public override int Execute(params Action[] actions){
+    public override int Execute(params Action[] actions) {
         int ret = 0;
 
         foreach(Action action in actions) {
@@ -313,5 +313,21 @@ public class Rby : GameBoy {
             Charmap = Data.Charmap,
             CharmapOffset = 0x80,
         };
+    }
+
+    public virtual byte[][] BGPalette() {
+        return new byte[][] {
+                    new byte[] { 232, 232, 232 },
+                    new byte[] { 160, 160, 160 },
+                    new byte[] { 88, 88, 88 },
+                    new byte[] { 16, 16, 16 }};
+    }
+
+    public virtual byte[][] ObjPalette() {
+        return new byte[][] {
+                    new byte[] { 232, 232, 232 },
+                    new byte[] { 160, 160, 160 },
+                    new byte[] { 88, 88, 88 },
+                    new byte[] { 16, 16, 16 }};
     }
 }

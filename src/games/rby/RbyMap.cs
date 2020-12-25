@@ -146,6 +146,7 @@ public class RbyMap : Map<RbyTile> {
         objectData.Seek(numSigns * 3); // TODO: Parse signs
 
         Sprites = new DataList<RbySprite>();
+        Sprites.IndexCallback = obj => obj.SpriteId;
         Sprites.PositionCallback = obj => (obj.X, obj.Y);
         byte numSprites = objectData.u8();
         for(byte i = 0; i < numSprites; i++) {
@@ -187,7 +188,26 @@ public class RbyMap : Map<RbyTile> {
         }
 
         Bitmap bitmap = new Bitmap(Width * 2 * 2 * 8, Height * 2 * 2 * 8);
-        bitmap.Unpack2BPP(pixels);
+        bitmap.Unpack2BPP(pixels, Game.BGPalette());
+
+        foreach(RbySprite sprite in Sprites) {
+            int headerPointer = Game.SYM["SpriteSheetPointerTable"] + (sprite.PictureId - 1) * 4;
+            int spritePointer = Game.ROM[headerPointer + 3] << 16 | Game.ROM.u16le(headerPointer);
+            bool flip = false;
+            int spriteIndex;
+            switch(sprite.Direction) {
+                case 0xd0: spriteIndex = 0; break;
+                case 0xd1: spriteIndex = 1; break;
+                case 0xd2: spriteIndex = 2; break;
+                case 0xd3: spriteIndex = 2; flip = true; break;
+                default: spriteIndex = 0; break;
+            }
+            Bitmap spriteBitmap = new Bitmap(16, 16);
+            spriteBitmap.Unpack2BPP(Game.ROM.Subarray(spritePointer + spriteIndex * 16 * 4, 16 * 4), Game.ObjPalette(), true);
+            if(flip) spriteBitmap.Flip(true, false);
+            bitmap.DrawBitmap(spriteBitmap, sprite.X * 16, sprite.Y * 16 - 4);
+        }
+
         return bitmap;
     }
 }

@@ -54,27 +54,65 @@ public class Bitmap {
         Pixels[offset + 3] = a;
     }
 
-    public void Unpack2BPP(byte[] data) {
-        byte[][] pal = new byte[][] {
-                    new byte[] { 232, 232, 232 },
-                    new byte[] { 160, 160, 160 },
-                    new byte[] { 88, 88, 88 },
-                    new byte[] { 16, 16, 16 }};
+    public void DrawPixel(int x, int y, byte r, byte g, byte b, byte a = 0xff) {
+        int offset = (x + y * Width) * 4;
+        byte thisR = Pixels[offset + 0];
+        byte thisG = Pixels[offset + 1];
+        byte thisB = Pixels[offset + 2];
+        byte otherAmount = a;
+        byte thisAmount = (byte) (255 - a);
+        Pixels[offset + 0] = (byte) ((thisR * thisAmount + r * otherAmount) >> 8);
+        Pixels[offset + 1] = (byte) ((thisG * thisAmount + g * otherAmount) >> 8);
+        Pixels[offset + 2] = (byte) ((thisB * thisAmount + b * otherAmount) >> 8);
+    }
 
+    public void DrawBitmap(Bitmap src, int xOffs, int yOffs) {
+        for(int x = 0; x < src.Width; x++) {
+            int xx = x + xOffs;
+            if(xx < 0 || xx >= Width) continue;
+            for(int y = 0; y < src.Height; y++) {
+                int yy = y + yOffs;
+                if(yy < 0 || yy >= Height) continue;
+                int srcIndex = (x + y * src.Width) * 4;
+                DrawPixel(xx, yy, src.Pixels[srcIndex + 0], src.Pixels[srcIndex + 1], src.Pixels[srcIndex + 2], src.Pixels[srcIndex + 3]);
+            }
+        }
+    }
+
+    public void Unpack2BPP(byte[] data, byte[][] pal, bool transparent = false) {
         int w = Width / 8;
         for(int i = 0; i < data.Length / 16; i++) {
             for(int j = 0; j < 8; j++) {
                 byte top = data[i * 16 + j * 2 + 0];
                 byte bot = data[i * 16 + j * 2 + 1];
                 for(int k = 0; k < 8; k++) {
-                    byte[] col = pal[(byte) (((top >> (7 - k)) & 1) + ((bot >> (7 - k)) & 1) * 2)];
                     int idx = ((i / w) * (w * 8) * 8 + j * (w * 8) + (i % w) * 8 + k) * 4;
+                    int palIdx = (byte) (((top >> (7 - k)) & 1) + ((bot >> (7 - k)) & 1) * 2);
+                    byte[] col = pal[palIdx];
                     Pixels[idx + 0] = col[0];
                     Pixels[idx + 1] = col[1];
                     Pixels[idx + 2] = col[2];
-                    Pixels[idx + 3] = 0xff;
+                    Pixels[idx + 3] = (byte) (transparent && palIdx == 0 ? 0x00 : 0xff);
                 }
             }
         }
+    }
+
+    public void Flip(bool xflip, bool yflip) {
+        byte[] newPixels = new byte[Pixels.Length];
+        for(int srcX = 0; srcX < Width; srcX++) {
+            int destX = xflip ? Width - srcX - 1 : srcX;
+            for(int srcY = 0; srcY < Height; srcY++) {
+                int destY = yflip ? Height - srcY - 1 : srcY;
+                int srcIdx = (srcX + srcY * Width) * 4;
+                int destIdx = (destX + destY * Width) * 4;
+                newPixels[destIdx + 0] = Pixels[srcIdx + 0];
+                newPixels[destIdx + 1] = Pixels[srcIdx + 1];
+                newPixels[destIdx + 2] = Pixels[srcIdx + 2];
+                newPixels[destIdx + 3] = Pixels[srcIdx + 3];
+            }
+        }
+
+        Pixels = newPixels;
     }
 }

@@ -217,7 +217,11 @@ public class GscMap : Map<GscTile> {
         }
 
         Bitmap bitmap = new Bitmap(Width * 2 * 2 * 8, Height * 2 * 2 * 8);
-        bitmap.Unpack2BPP(pixels);
+        bitmap.Unpack2BPP(pixels, new byte[][] {
+                                        new byte[] { 232, 232, 232 },
+                                        new byte[] { 160, 160, 160 },
+                                        new byte[] { 88, 88, 88 },
+                                        new byte[] { 16, 16, 16 }});
         return bitmap;
     }
 }
