@@ -195,6 +195,11 @@ public class GameBoy : IDisposable {
         throw new NotImplementedException();
     }
 
+    // Wrapper for advancing to joypad polling and injecting an input
+    public virtual void Press(params Joypad[] joypads) {
+        throw new NotImplementedException();
+    }
+
     // Executes the specified actions and returns the last hit breakpoint.
     public virtual int Execute(params Action[] actions) {
         throw new NotImplementedException();
