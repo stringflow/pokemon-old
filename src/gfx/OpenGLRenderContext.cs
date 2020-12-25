@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Runtime.InteropServices;
-using System.Numerics;
 using OpenGL;
 using static SDL2.SDL;
 
@@ -187,6 +186,10 @@ public class OpenGLRenderContext : RenderContext {
         }
     }
 
+    public SDL_WindowFlags GetSDLWindowFlags() {
+        return SDL_WindowFlags.SDL_WINDOW_OPENGL;
+    }
+
     public void Dispose() {
         // Clean up the OpenGL objects.
         Gl.DeleteBuffers(VertexBuffer, IndexBuffer);
@@ -235,17 +238,17 @@ public class OpenGLRenderContext : RenderContext {
         fixed(byte* data = dest) Gl.ReadPixels(0, 0, Renderer.Window.Width, Renderer.Window.Height, OpenGL.PixelFormat.Rgb, PixelType.UnsignedByte, (IntPtr) data);
     }
 
-    public uint CreateTexture() {
+    public ulong CreateTexture(int width, int height, PixelFormat format) {
         // Allocate a new 2d texture.
         uint tex = Gl.GenTexture();
         Gl.BindTexture(TextureTarget.Texture2d, tex);
         // Use the nearest-filter for upscaling or downscaling the texture.
         Gl.TexParameteri(TextureTarget.Texture2d, TextureParameterName.TextureMinFilter, TextureMinFilter.Nearest);
         Gl.TexParameteri(TextureTarget.Texture2d, TextureParameterName.TextureMagFilter, TextureMagFilter.Nearest);
-        return tex;
+        return (ulong) tex;
     }
 
-    public void SetTexturePixels(uint texture, byte[] pixels, int pitch, PixelFormat format) {
+    public void SetTexturePixels(ulong texture, byte[] pixels, int pitch, PixelFormat format) {
         // Convert from the graphics API independent pixel format to the OpenGL specific one.
         OpenGL.PixelFormat openglformat = 0;
         switch(format) {
@@ -253,7 +256,7 @@ public class OpenGLRenderContext : RenderContext {
             case PixelFormat.BGRA: openglformat = OpenGL.PixelFormat.Bgra; break;
         }
 
-        Gl.BindTexture(TextureTarget.Texture2d, texture);
+        Gl.BindTexture(TextureTarget.Texture2d, (uint) texture);
         // Upload the new pixel data to VRAM.
         Gl.TexImage2D(TextureTarget.Texture2d, 0, InternalFormat.Rgba8, pitch, (pixels.Length >> 2) / pitch, 0, openglformat, PixelType.UnsignedByte, pixels);
     }
@@ -263,7 +266,7 @@ public class OpenGLRenderContext : RenderContext {
         Gl.UseProgram(ShaderProgram);
         for(int i = 0; i < Renderer.TextureSlotIndex; i++) {
             Gl.ActiveTexture((TextureUnit) (TextureUnit.Texture0 + i));
-            Gl.BindTexture(TextureTarget.Texture2d, Renderer.TextureSlots[i]);
+            Gl.BindTexture(TextureTarget.Texture2d, (uint) Renderer.TextureSlots[i]);
         }
         Gl.BindVertexArray(VertexArray);
         Gl.BindBuffer(BufferTarget.ArrayBuffer, VertexBuffer);

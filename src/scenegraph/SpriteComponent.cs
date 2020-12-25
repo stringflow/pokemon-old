@@ -1,6 +1,6 @@
 public class SpriteComponent : Component {
 
-    public uint Texture;
+    public ulong Texture;
 
     public SpriteComponent(float x, float y, float width, float height, uint texture) {
         X = x;

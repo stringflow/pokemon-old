@@ -17,7 +17,7 @@ public class Window : IDisposable {
 
         Width = width;
         Height = height;
-        Handle = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WindowFlags.SDL_WINDOW_OPENGL);
+        Handle = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, Renderer.GetSDLWindowFlags());
         Renderer.Initialize(this);
     }
 

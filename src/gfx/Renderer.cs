@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using static SDL2.SDL;
 
 /*
     The universal rendering pipeline that can support different backends. (currently only OpenGL)
@@ -37,7 +38,7 @@ public class Font {
     public int NumCharsPerRow;
     public Charmap Charmap;
     public int CharmapOffset;
-    public uint Texture;
+    public ulong Texture;
 }
 
 // The graphics API backend interface.
@@ -47,6 +48,8 @@ public interface RenderContext : IDisposable {
     RendererCapabilities CreateContext(IntPtr window);
     // Initializes the renderer.
     void Initialize(uint[] indices, string shader);
+    // Retrives the sdl window flags required to use this render api. 
+    SDL_WindowFlags GetSDLWindowFlags();
 
     // Swaps the buffers.
     void SwapBuffers(IntPtr window);
@@ -63,15 +66,15 @@ public interface RenderContext : IDisposable {
     void ReadBuffer(byte[] dest);
 
     // Creates a 2d texture and returns a handle.
-    uint CreateTexture();
+    ulong CreateTexture(int width, int height, PixelFormat format);
     // Uploads new pixel data to a 2d texture given a handle.
-    void SetTexturePixels(uint texture, byte[] pixels, int pitch, PixelFormat format);
+    void SetTexturePixels(ulong texture, byte[] pixels, int pitch, PixelFormat format);
 }
 
 public static class Renderer {
 
     // Currently used render API and its capabilities.
-    public static RenderContext RenderAPI = new OpenGLRenderContext();
+    public static RenderContext RenderAPI = new SDL2RenderContext();
     public static RendererCapabilities Capabilities;
     public static Window Window;
 
@@ -88,9 +91,9 @@ public static class Renderer {
     public static Vertex[] Vertices;
 
     // Currently bound textures.
-    public static uint[] TextureSlots;
+    public static ulong[] TextureSlots;
     // A 1x1 white texture that is sampled from for solid colored quads.
-    public static uint WhiteTexture;
+    public static ulong WhiteTexture;
 
     // The tail of the 'Vertices' array.
     public static uint VertexIndex;
@@ -143,12 +146,16 @@ public static class Renderer {
         RenderAPI.Initialize(indices, "assets/shader.glsl");
 
         // Create a fully white 1x1 texture.
-        WhiteTexture = CreateTexture(new byte[] { 0xff, 0xff, 0xff, 0xff }, 1, PixelFormat.RGBA);
+        WhiteTexture = CreateTexture(new byte[] { 0xff, 0xff, 0xff, 0xff }, 1, 1, PixelFormat.RGBA);
 
         // Allocate 'Capabilities.NumTextureSlots' number of texture slots.
-        TextureSlots = new uint[Capabilities.NumTextureSlots];
+        TextureSlots = new ulong[Capabilities.NumTextureSlots];
         // Set the first texture slot to the white texture.
         TextureSlots[0] = WhiteTexture;
+    }
+
+    public static SDL_WindowFlags GetSDLWindowFlags() {
+        return RenderAPI.GetSDLWindowFlags();
     }
 
     public static void Dispose() {
@@ -171,23 +178,23 @@ public static class Renderer {
         RenderAPI.ReadBuffer(dest);
     }
 
-    public static uint CreateTexture() {
-        return RenderAPI.CreateTexture();
+    public static ulong CreateTexture(int width, int height, PixelFormat format) {
+        return RenderAPI.CreateTexture(width, height, format);
     }
 
     // A helper function for quickly creating a 2d texture and assigning it with pixel data.
-    public static uint CreateTexture(byte[] pixels, int pitch, PixelFormat format) {
-        uint tex = RenderAPI.CreateTexture();
-        SetTexturePixels(tex, pixels, pitch, format);
+    public static ulong CreateTexture(byte[] pixels, int width, int height, PixelFormat format) {
+        ulong tex = RenderAPI.CreateTexture(width, height, format);
+        SetTexturePixels(tex, pixels, width, format);
         return tex;
     }
 
     // Another helper function for quickly creating a 2d texture and assigning it with pixel data.
-    public static uint CreateTexture(Bitmap bitmap) {
-        return CreateTexture(bitmap.Pixels, bitmap.Width, PixelFormat.RGBA);
+    public static ulong CreateTexture(Bitmap bitmap) {
+        return CreateTexture(bitmap.Pixels, bitmap.Width, bitmap.Height, PixelFormat.RGBA);
     }
 
-    public static void SetTexturePixels(uint texture, byte[] pixels, int pitch, PixelFormat format) {
+    public static void SetTexturePixels(ulong texture, byte[] pixels, int pitch, PixelFormat format) {
         RenderAPI.SetTexturePixels(texture, pixels, pitch, format);
     }
 
@@ -220,7 +227,7 @@ public static class Renderer {
         RenderAPI.DrawIndexed(IndexCount);
     }
 
-    public static void DrawQuad(float x, float y, float renderLayer, float width, float height, uint texture) {
+    public static void DrawQuad(float x, float y, float renderLayer, float width, float height, ulong texture) {
         DrawQuad(x, y, renderLayer, width, height, 0, 0, 1, 1, texture, Vector4.One);
     }
 
@@ -228,7 +235,7 @@ public static class Renderer {
         DrawQuad(x, y, renderLayer, width, height, 0, 0, 1, 1, WhiteTexture, color);
     }
 
-    public static void DrawQuad(float x, float y, float renderLayer, float width, float height, float s, float t, float p, float q, uint texture, Vector4 color) {
+    public static void DrawQuad(float x, float y, float renderLayer, float width, float height, float s, float t, float p, float q, ulong texture, Vector4 color) {
         // If the index buffer is full, a new batch must be made.
         if(IndexCount >= MaxIndices) {
             NextBatch();
