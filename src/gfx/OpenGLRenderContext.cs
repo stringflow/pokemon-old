@@ -235,7 +235,12 @@ public class OpenGLRenderContext : RenderContext {
     }
 
     public unsafe void ReadBuffer(byte[] dest) {
-        fixed(byte* data = dest) Gl.ReadPixels(0, 0, Renderer.Window.Width, Renderer.Window.Height, OpenGL.PixelFormat.Rgb, PixelType.UnsignedByte, (IntPtr) data);
+        byte[] buf = new byte[dest.Length];
+        fixed(byte* data = buf) Gl.ReadPixels(0, 0, Renderer.Window.Width, Renderer.Window.Height, OpenGL.PixelFormat.Rgb, PixelType.UnsignedByte, (IntPtr) data);
+        int scanlineSize = Renderer.Window.Width * 3;
+        for(int i = 0; i < Renderer.Window.Height; i++) {
+            Array.Copy(buf, i * scanlineSize, dest, (Renderer.Window.Height - i - 1) * scanlineSize, scanlineSize);
+        }
     }
 
     public ulong CreateTexture(int width, int height, PixelFormat format) {

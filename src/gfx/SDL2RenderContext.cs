@@ -5,14 +5,12 @@ using static SDL2.SDL;
 public class SDL2RenderContext : RenderContext {
 
     public IntPtr Context;
-    public int RenderWidth;
-    public int RenderHeight;
 
     public RendererCapabilities CreateContext(IntPtr window) {
         Context = SDL_CreateRenderer(window, -1, SDL_RendererFlags.SDL_RENDERER_ACCELERATED);
         SDL_SetHint("SDL_RENDER_SCALE_QUALITY", "nearest");
-        SDL_GetWindowSize(window, out RenderWidth, out RenderHeight);
-        SDL_RenderSetLogicalSize(Context, RenderWidth, RenderHeight);
+        SDL_GetWindowSize(window, out int w, out int h);
+        SetViewport(0, 0, w, h);
         return new RendererCapabilities {
             MaxTextureSize = 8192,
             NumTextureSlots = 8192,
@@ -47,10 +45,10 @@ public class SDL2RenderContext : RenderContext {
             int tex = (int) Renderer.Vertices[i].TexIndex;
             Vertex vMin = Renderer.Vertices[i + 3];
             Vertex vMax = Renderer.Vertices[i + 1];
-            int minX = (int) ((vMin.Position.X + 1.0f) * (RenderWidth / 2.0f));
-            int minY = (int) ((vMin.Position.Y + 1.0f) * (RenderHeight / 2.0f));
-            int maxX = (int) ((vMax.Position.X + 1.0f) * (RenderWidth / 2.0f));
-            int maxY = (int) ((vMax.Position.Y + 1.0f) * (RenderHeight / 2.0f));
+            int minX = (int) ((vMin.Position.X + 1.0f) * (Renderer.Window.Width / 2.0f));
+            int minY = (int) ((vMin.Position.Y + 1.0f) * (Renderer.Window.Height / 2.0f));
+            int maxX = (int) ((vMax.Position.X + 1.0f) * (Renderer.Window.Width / 2.0f));
+            int maxY = (int) ((vMax.Position.Y + 1.0f) * (Renderer.Window.Height / 2.0f));
             int width = maxX - minX;
             int height = maxY - minY;
             SDL_Rect destrect = new SDL_Rect { x = minX, y = minY, w = width, h = height };
@@ -59,6 +57,8 @@ public class SDL2RenderContext : RenderContext {
     }
 
     public unsafe void ReadBuffer(byte[] dest) {
+        SDL_Rect rect = new SDL_Rect { x = 0, y = 0, w = Renderer.Window.Width, h = Renderer.Window.Height };
+        fixed(byte* data = dest) SDL_RenderReadPixels(Context, ref rect, SDL_PIXELFORMAT_RGB24, (IntPtr) data, Renderer.Window.Width * 3);
     }
 
     public ulong CreateTexture(int width, int height, PixelFormat format) {
