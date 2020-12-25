@@ -69,6 +69,23 @@ public class RbyTile : Tile<RbyTile> {
         return ledgeTile != null && Map.Game.Ledges.Any(ledge => ledge.Source == Collision && ledge.Ledge == ledgeTile.Collision && ledge.ActionRequired == action);
     }
 
+    public override RbyTile WarpCheck() {
+        RbyWarp sourceWarp = Map.Warps[X, Y];
+        if(sourceWarp != null && sourceWarp.Allowed) {
+            RbyMap destMap = Map.Game.Maps[sourceWarp.DestinationMap];
+            if(destMap != null) {
+                RbyWarp destWarp = destMap.Warps[sourceWarp.DestinationIndex];
+                if(destWarp != null) {
+                    RbyTile destTile = destMap[destWarp.X, destWarp.Y];
+                    if(destTile.Collision == 27) destTile = destTile.Neighbor(Action.Down); // Door tiles automatically move the player 1 tile down.
+                    return destTile;
+                }
+            }
+        }
+
+        return this;
+    }
+
     public override int LedgeCost() {
         return 40;
     }
@@ -93,12 +110,17 @@ public class RbyWarp {
         DestinationIndex = data.u8();
         DestinationMap = data.u8();
         Allowed = false;
+
+        if(!(game is Yellow) && DestinationMap == 0xff) {
+            DestinationMap = RedBlue.wLastMapDestinations[(map.Name, index)];
+        }
     }
 }
 
 public class RbyMap : Map<RbyTile> {
 
     public Rby Game;
+    public string Name;
     public byte Id;
     public byte Bank;
     public RbyTileset Tileset;
@@ -112,8 +134,9 @@ public class RbyMap : Map<RbyTile> {
     public DataList<RbyWarp> Warps;
     public DataList<RbySprite> Sprites;
 
-    public RbyMap(Rby game, byte id, ByteStream data) {
+    public RbyMap(Rby game, string name, byte id, ByteStream data) {
         Game = game;
+        Name = name;
         Id = id;
         Bank = (byte) (data.Position >> 16);
         Tileset = game.Tilesets[data.u8()];
@@ -136,6 +159,7 @@ public class RbyMap : Map<RbyTile> {
         BorderBlock = objectData.u8();
 
         Warps = new DataList<RbyWarp>();
+        Warps.IndexCallback = obj => obj.Index;
         Warps.PositionCallback = obj => (obj.X, obj.Y);
         byte numWarps = objectData.u8();
         for(byte i = 0; i < numWarps; i++) {
@@ -209,5 +233,9 @@ public class RbyMap : Map<RbyTile> {
         }
 
         return bitmap;
+    }
+
+    public override string ToString() {
+        return Name;
     }
 }

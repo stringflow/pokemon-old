@@ -33,6 +33,7 @@ public class GscData {
 
         Tilesets.IndexCallback = obj => obj.Id;
 
+        Maps.NameCallback = obj => obj.Name;
         Maps.IndexCallback = obj => obj.Group << 8 | obj.Id;
     }
 }

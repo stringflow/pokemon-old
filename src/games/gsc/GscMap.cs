@@ -97,6 +97,23 @@ public class GscTile : Tile<GscTile> {
         }
     }
 
+    public override GscTile WarpCheck() {
+        GscWarp sourceWarp = Map.Warps[X, Y];
+        if(sourceWarp != null && sourceWarp.Allowed) {
+            GscMap destMap = Map.Game.Maps[sourceWarp.MapId];
+            if(destMap != null) {
+                GscWarp destWarp = destMap.Warps[sourceWarp.DestinationIndex];
+                if(destWarp != null) {
+                    GscTile destTile = destMap[destWarp.X, destWarp.Y];
+                    if(destTile.Collision == 113) destTile = destTile.Neighbor(Action.Down); // Door tiles automatically move the player 1 tile down.
+                    return destTile;
+                }
+            }
+        }
+
+        return this;
+    }
+
     public override int LedgeCost() {
         return 34; // TODO: Fact check this
     }
@@ -107,6 +124,7 @@ public class GscMap : Map<GscTile> {
     // TODO: Environment, Location, and Music should all be enums.
     //       Because they are currently unused I left them as bytes to reduce noise in the code.
     public Gsc Game;
+    public string Name;
     public byte Group;
     public byte Id;
     public int Attributes;
@@ -142,6 +160,9 @@ public class GscMap : Map<GscTile> {
         TimeOfDay = (GscPalette) data.Nybble();
         FishGroup = (GscFishGroup) data.u8();
 
+        Name = game.SYM[Attributes];
+        Name = Name.Substring(0, Name.IndexOf("_MapAttributes"));
+
         ByteStream attributesData = game.ROM.From(Attributes);
         BorderBlock = attributesData.u8();
         Height = attributesData.u8();
@@ -161,6 +182,7 @@ public class GscMap : Map<GscTile> {
         ByteStream eventsData = game.ROM.From(Events + 2);
 
         Warps = new DataList<GscWarp>();
+        Warps.IndexCallback = obj => obj.Index;
         Warps.PositionCallback = obj => (obj.X, obj.Y);
         byte numWarps = eventsData.u8();
         for(byte i = 0; i < numWarps; i++) {
@@ -223,5 +245,9 @@ public class GscMap : Map<GscTile> {
                                         new byte[] { 88, 88, 88 },
                                         new byte[] { 16, 16, 16 }});
         return bitmap;
+    }
+
+    public override string ToString() {
+        return Name;
     }
 }

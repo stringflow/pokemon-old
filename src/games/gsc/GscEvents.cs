@@ -19,7 +19,7 @@ public class GscWarp {
         Index = index;
         Y = data.u8();
         X = data.u8();
-        DestinationIndex = data.u8();
+        DestinationIndex = (byte) (data.u8() - 1);
         MapGroup = data.u8();
         MapNumber = data.u8();
         Allowed = false;

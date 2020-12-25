@@ -42,6 +42,7 @@ public class RbyData {
 
         Tilesets.IndexCallback = obj => obj.Id;
 
+        Maps.NameCallback = obj => obj.Name;
         Maps.IndexCallback = obj => obj.Id;
     }
 }
@@ -223,7 +224,11 @@ public class Rby : GameBoy {
         ByteStream bankStream = ROM.From("MapHeaderBanks");
         ByteStream addressStream = ROM.From("MapHeaderPointers");
         for(byte i = 0; i < numMaps; i++) {
-            Maps.Add(new RbyMap(this, i, ROM.From(bankStream.u8() << 16 | addressStream.u16le())));
+            int headerAddress = bankStream.u8() << 16 | addressStream.u16le();
+            if(SYM.Contains(headerAddress)) {
+                string addressLabel = SYM[headerAddress];
+                Maps.Add(new RbyMap(this, addressLabel.Substring(0, addressLabel.IndexOf("_h")), i, ROM.From(headerAddress)));
+            }
         }
     }
 

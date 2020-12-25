@@ -234,7 +234,7 @@ public class ByteStream : MemoryStream {
     }
 }
 
-public class SYM : Dictionary<string, int> {
+public class SYM : Map<string, int> {
 
     public SYM(string file) : base() {
         string[] lines = File.ReadAllLines(file);
@@ -248,7 +248,7 @@ public class SYM : Dictionary<string, int> {
             byte bank = Convert.ToByte(match.Groups[1].Value, 16);
             ushort addr = Convert.ToUInt16(match.Groups[2].Value, 16);
             string label = match.Groups[3].Value;
-            this[label] = bank << 16 | addr;
+            Add(label, bank << 16 | addr);
         }
     }
 }
