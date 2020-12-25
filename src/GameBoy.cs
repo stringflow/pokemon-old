@@ -48,7 +48,7 @@ public enum Joypad : byte {
     All = 0xff,
 }
 
-public class GameBoy {
+public class GameBoy : IDisposable {
 
     public const int SamplesPerFrame = 35112;
 
@@ -93,6 +93,11 @@ public class GameBoy {
             SYM = new SYM(symPath);
             ROM.Symbols = SYM;
         }
+    }
+
+    public void Dispose() {
+        if(Scene != null) Scene.Dispose();
+        Libgambatte.gambatte_destroy(Handle);
     }
 
     // Emulates 'runsamples' number of samples, or until a video frame has to be drawn. (1 sample = 2 cpu cycles)
@@ -223,6 +228,12 @@ public class GameBoy {
         s.AddComponent(new VideoBufferComponent(0, 0, 160, 144));
     }
 
+    // Helper function that creates a basic scene graph with a video buffer component and a record component.
+    public void Record(string movie) {
+        Show();
+        Scene.AddComponent(new RecordingComponent(movie));
+    }
+
     // Reads the game's font from the ROM. Each game overrides this function and implements it in its own way.
     public virtual Font ReadFont() {
         return null;
@@ -241,6 +252,9 @@ public static unsafe class Libgambatte {
 
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern IntPtr gambatte_create();
+
+    [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void gambatte_destroy(IntPtr gb);
 
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern int gambatte_load(IntPtr gb, string romfile, LoadFlags flags);

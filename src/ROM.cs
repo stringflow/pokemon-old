@@ -18,7 +18,7 @@ public class ROM {
     }
 
     public int GlobalChecksum {
-        get { return Header[0x14e] << 16 | Header[0x14f]; }
+        get { return Header[0x14e] << 8 | Header[0x14f]; }
     }
 
     /*
