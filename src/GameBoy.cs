@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Runtime.InteropServices;
 
 public enum LoadFlags : int {
@@ -242,6 +243,32 @@ public class GameBoy : IDisposable {
     // Reads the game's font from the ROM. Each game overrides this function and implements it in its own way.
     public virtual Font ReadFont() {
         return null;
+    }
+
+    public void PlayBizhawkMovie(string bk2File) {
+        using (FileStream bk2Stream = File.OpenRead(bk2File))
+        using (ZipArchive zip = new ZipArchive(bk2Stream, ZipArchiveMode.Read))
+        using (StreamReader bk2Reader = new StreamReader(zip.GetEntry("Input Log.txt").Open())) {
+            PlayBizhawkInputLog(bk2Reader.ReadToEnd().Split('\n'));
+        }
+    }
+
+    public void PlayBizhawkInputLog(string fileName) {
+        PlayBizhawkInputLog(File.ReadAllLines(fileName));
+    }
+
+    public void PlayBizhawkInputLog(string[] lines) {
+        Joypad[] joypadFlags = { Joypad.Up, Joypad.Down, Joypad.Left, Joypad.Right, Joypad.Start, Joypad.Select, Joypad.B, Joypad.A };
+        lines = lines.Subarray(2, lines.Length - 3);
+        for (int i = 0; i < lines.Length; i++) {
+            Joypad joypad = Joypad.None;
+            for (int j = 0; j < joypadFlags.Length; j++) {
+                if (lines[i][j + 1] != '.') {
+                    joypad |= joypadFlags[j];
+                }
+            }
+            AdvanceFrame(joypad);
+        }
     }
 }
 
