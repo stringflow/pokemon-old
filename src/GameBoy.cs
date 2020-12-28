@@ -36,20 +36,6 @@ public enum SpeedupFlags : uint {
     All = 0xffffffff,
 }
 
-public enum Joypad : byte {
-
-    None = 0x0,
-    A = 0x1,
-    B = 0x2,
-    Select = 0x4,
-    Start = 0x8,
-    Right = 0x10,
-    Left = 0x20,
-    Up = 0x40,
-    Down = 0x80,
-    All = 0xff,
-}
-
 public partial class GameBoy : IDisposable {
 
     public const int SamplesPerFrame = 35112;
