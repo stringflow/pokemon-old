@@ -1,3 +1,5 @@
+using System;
+
 public partial class Rby {
 
     public override void Inject(Joypad joypad) {
@@ -70,5 +72,144 @@ public partial class Rby {
         Inject(Joypad.A);
         Hold(Joypad.A, SYM["PlaySound"]);
         RunUntil("JoypadOverworld");
+    }
+
+    public void ClearText() {
+        Joypad joypad = Joypad.A;
+        int ret;
+        do {
+            ret = RunUntil("ManualTextScroll", "HandleMenuInput", "PrintStatsBox.PrintStats", "TextCommand_PAUSE", "DisableLCD");
+            joypad = joypad.Opposite();
+
+            if(ret == SYM["ManualTextScroll"] || ret == SYM["PrintStatsBox.PrintStats"]) {
+                Inject(joypad);
+                AdvanceFrame(joypad);
+            } else if(ret == SYM["TextCommand_PAUSE"]) {
+                Inject(joypad);
+                Hold(joypad, "Joypad");
+            } else if (ret == SYM["DisableLCD"]) {
+                // find a better breakpoint for when a battle is over?
+                return;
+            } else {
+                RunUntil("Joypad");
+            }
+        } while(ret != SYM["HandleMenuInput"]);
+    }
+
+    public void UseMove(int slot, int numMoves) {
+        OpenFightMenu();
+        int currentSlot = CpuRead("wCurrentMenuItem") - 1;
+        int difference = currentSlot - slot;
+        int numSlots = difference == 0 ? 0 : slot % 2 == currentSlot % 2 ? (int)(numMoves/2) : 1;
+        Joypad joypad = ((Math.Abs(difference * numMoves) + difference % numMoves) & 2) != 0 ? Joypad.Down : Joypad.Up;
+        if(numSlots == 0) {
+            Press(Joypad.None);
+        } else if(numSlots == 1) {
+            Press(joypad);
+        } else if(numSlots == 2) {
+            Press(joypad, Joypad.None, joypad);
+        }
+        Press(Joypad.A);
+    }
+
+    public void UseMove1(int numMoves = 4) {
+        UseMove(0, numMoves);
+    }
+
+    public void UseMove2(int numMoves = 4) {
+        UseMove(1, numMoves);
+    }
+
+    public void UseMove3(int numMoves = 4) {
+        UseMove(2, numMoves);
+    }
+
+    public void UseMove4(int numMoves = 4) {
+        UseMove(3, numMoves);
+    }
+
+    public void UseItem(string item) {
+        BagScroll(item);
+        Press(Joypad.A);
+    }
+
+    public void UseXItem(string item) {
+        UseItem(item);
+        RunUntil("DoneText");
+        Inject(Joypad.B);
+        AdvanceFrame(Joypad.B);
+    }
+
+    public void UseXAttack() {
+        UseXItem("X ATTACK");
+    }
+
+    public void UseXDefense() {
+        UseXItem("X DEFENSE");
+    }
+
+    public void UseXSpeed() {
+        UseXItem("X SPEED");
+    }
+
+    public void UseXSpecial() {
+        UseXItem("X SPECIAL");
+    }
+
+    public void UseXAccuracy() {
+        UseXItem("X ACCURACY");
+    }
+
+    public void UseHealingItem(string item) {
+        UseItem(item);
+        Press(Joypad.None, Joypad.A, Joypad.B);
+    }
+
+    public void UsePokeFlute() {
+        BagScroll("POKE FLUTE");
+        Press(Joypad.A);
+    }
+
+    public void OpenFightMenu() {
+        if(CpuRead("wCurrentMenuItem") == 1) Press(Joypad.Up);
+        Press(Joypad.A);
+        RunUntil("Joypad");
+    }
+
+    public void OpenItemBag() {
+        if(CpuRead("wCurrentMenuItem") == 0) Press(Joypad.Down);
+        Press(Joypad.A);
+    }
+
+    public void BagScroll(string item) {
+        BagScroll(Bag.IndexOf(item));
+    }
+
+    public void BagScroll(RbyItem item) {
+        BagScroll(Bag.IndexOf(item));
+    }
+
+    public void BagScroll(int targetSlot) {
+        OpenItemBag();
+        RunUntil("DisplayListMenuID");
+        int currentSlot = CpuRead("wCurrentMenuItem") + CpuRead("wListScrollOffset");
+        int difference = targetSlot - currentSlot;
+        int numSlots = Math.Abs(difference);
+
+        if(difference == 0) {
+            Press(Joypad.None);
+        } else if(difference == -2) {
+            Press(Joypad.Up, Joypad.Up | Joypad.Left);
+        } else if (difference == 2) {
+            Press(Joypad.Down, Joypad.Down | Joypad.Left);
+        } else {
+            Joypad direction = difference < 0 ? Joypad.Up : Joypad.Down;
+            Joypad secondary = Joypad.Left;
+            Press(direction);
+            for(int i = 1; i < numSlots; i++) {
+                Press(direction | secondary);
+                secondary = secondary.Opposite();
+            }
+        }
     }
 }

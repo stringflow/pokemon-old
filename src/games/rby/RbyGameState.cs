@@ -125,14 +125,17 @@ public partial class Rby {
         get { return CpuRead("wYBlockCoord"); }
     }
 
-    public RbyItemStack[] Bag {
+    public RbyBag Bag {
         get {
-            RbyItemStack[] ret = new RbyItemStack[CpuRead("wNumBagItems")];
+            RbyBag bag = new RbyBag();
+            bag.Game = this;
+            bag.NumItems = CpuRead("wNumBagItems");
+            bag.Items = new RbyItemStack[bag.NumItems];
             RAMStream data = From("wBagItems");
-            for(int i = 0; i < ret.Length; i++) {
-                ret[i] = new RbyItemStack(Items[data.u8()], data.u8());
+            for(int i = 0; i < bag.Items.Length; i++) {
+                bag.Items[i] = new RbyItemStack(Items[data.u8()], data.u8());
             }
-            return ret;
+            return bag;
         }
     }
 }
