@@ -112,7 +112,14 @@ public class Bitmap {
                 newPixels[destIdx + 3] = Pixels[srcIdx + 3];
             }
         }
-
         Pixels = newPixels;
+    }
+
+    public void RemapRedAndBlueChannels() {
+        for(int i = 0; i < Width * Height; i++) {
+            byte temp = Pixels[i * 4 + 0];
+            Pixels[i * 4 + 0] = Pixels[i * 4 + 2];
+            Pixels[i * 4 + 2] = temp;
+        }
     }
 }

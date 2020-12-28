@@ -281,6 +281,18 @@ public partial class GameBoy : IDisposable {
             AdvanceFrame(joypad);
         }
     }
+
+    public Bitmap Screenshot() {
+        Bitmap bitmap;
+        if(Scene == null) {
+            bitmap = new Bitmap(160, 144, VideoBuffer);
+            bitmap.RemapRedAndBlueChannels();
+        } else {
+            bitmap = new Bitmap(Scene.Window.Width, Scene.Window.Height);
+            Renderer.ReadBuffer(bitmap.Pixels);
+        }
+        return bitmap;
+    }
 }
 
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

@@ -87,7 +87,7 @@ public partial class Rby {
             } else if(ret == SYM["TextCommand_PAUSE"]) {
                 Inject(joypad);
                 Hold(joypad, "Joypad");
-            } else if (ret == SYM["DisableLCD"]) {
+            } else if(ret == SYM["DisableLCD"]) {
                 // find a better breakpoint for when a battle is over?
                 return;
             } else {
@@ -96,36 +96,26 @@ public partial class Rby {
         } while(ret != SYM["HandleMenuInput"]);
     }
 
-    public void UseMove(int slot, int numMoves) {
+    public void UseMove(int slot) {
         OpenFightMenu();
-        int currentSlot = CpuRead("wCurrentMenuItem") - 1;
-        int difference = currentSlot - slot;
-        int numSlots = difference == 0 ? 0 : slot % 2 == currentSlot % 2 ? (int)(numMoves/2) : 1;
-        Joypad joypad = ((Math.Abs(difference * numMoves) + difference % numMoves) & 2) != 0 ? Joypad.Down : Joypad.Up;
-        if(numSlots == 0) {
-            Press(Joypad.None);
-        } else if(numSlots == 1) {
-            Press(joypad);
-        } else if(numSlots == 2) {
-            Press(joypad, Joypad.None, joypad);
-        }
+        SelectMenuItem(slot);
         Press(Joypad.A);
     }
 
-    public void UseMove1(int numMoves = 4) {
-        UseMove(0, numMoves);
+    public void UseMove1() {
+        UseMove(0);
     }
 
-    public void UseMove2(int numMoves = 4) {
-        UseMove(1, numMoves);
+    public void UseMove2() {
+        UseMove(1);
     }
 
-    public void UseMove3(int numMoves = 4) {
-        UseMove(2, numMoves);
+    public void UseMove3() {
+        UseMove(2);
     }
 
-    public void UseMove4(int numMoves = 4) {
-        UseMove(3, numMoves);
+    public void UseMove4() {
+        UseMove(3);
     }
 
     public void UseItem(string item) {
@@ -182,34 +172,44 @@ public partial class Rby {
     }
 
     public void BagScroll(string item) {
-        BagScroll(Bag.IndexOf(item));
+        SelectListItem(Bag.IndexOf(item));
     }
 
     public void BagScroll(RbyItem item) {
-        BagScroll(Bag.IndexOf(item));
+        SelectListItem(Bag.IndexOf(item));
     }
 
-    public void BagScroll(int targetSlot) {
-        OpenItemBag();
-        RunUntil("DisplayListMenuID");
-        int currentSlot = CpuRead("wCurrentMenuItem") + CpuRead("wListScrollOffset");
-        int difference = targetSlot - currentSlot;
-        int numSlots = Math.Abs(difference);
+    public void SelectMenuItem(int target) {
+        MenuScroll(target, CpuRead("wCurrentMenuItem"), CpuRead("wMaxMenuItem"), CpuRead("wMenuWrappingEnabled") > 0);
+    }
 
-        if(difference == 0) {
-            Press(Joypad.None);
-        } else if(difference == -2) {
-            Press(Joypad.Up, Joypad.Up | Joypad.Left);
-        } else if (difference == 2) {
-            Press(Joypad.Down, Joypad.Down | Joypad.Left);
+    public void SelectListItem(int target) {
+        MenuScroll(target, CpuRead("wCurrentMenuItem") + CpuRead("wListScrollOffset"), CpuRead("wListCount"), false);
+    }
+
+    private void MenuScroll(int target, int current, int max, bool wrapping) {
+        RunUntil("HandleMenuInput_.getJoypadState");
+        if((CpuRead(0xfff6 + (this is Yellow ? 4 : 0)) & 0x02) > 0) { // Battle menu
+            current--;
+            max = CpuRead("wNumMovesMinusOne");
+            wrapping = true;
+        }
+        Joypad input;
+        int amount;
+        if(!wrapping) {
+            input = target < current ? Joypad.Up : Joypad.Down;
+            amount = Math.Abs(current - target);
         } else {
-            Joypad direction = difference < 0 ? Joypad.Up : Joypad.Down;
-            Joypad secondary = Joypad.Left;
-            Press(direction);
-            for(int i = 1; i < numSlots; i++) {
-                Press(direction | secondary);
-                secondary = secondary.Opposite();
+            input = target > current ? Joypad.Down : Joypad.Up;
+            amount = Math.Abs(current - target);
+            if(amount > max / 2) {
+                amount = max - amount + 1;
+                input ^= (Joypad) 0xc0;
             }
+        }
+
+        for(int i = 0; i < amount; i++) {
+            MenuPress(input);
         }
     }
 }
