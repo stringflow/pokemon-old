@@ -25,7 +25,7 @@ public abstract class Tile<T> where T : Tile<T> {
     public byte Collision;
     public Dictionary<int, List<Edge<T>>> Edges = new Dictionary<int, List<Edge<T>>>();
 
-    public abstract bool IsPassable(PermissionSet permissions);
+    public abstract bool IsPassable(T from, PermissionSet permissions);
     public abstract T Right();
     public abstract T Left();
     public abstract T Up();
@@ -55,8 +55,10 @@ public abstract class Tile<T> where T : Tile<T> {
 
     public T Destination(Action action) {
         T neighbor = Neighbor(action);
-        if(IsLedgeHop(neighbor, action)) neighbor = neighbor.Neighbor(action);
-        neighbor = neighbor.WarpCheck();
+        if(neighbor != null) {
+            if(IsLedgeHop(neighbor, action)) neighbor = neighbor.Neighbor(action);
+            neighbor = neighbor.WarpCheck();
+        }
         return neighbor;
     }
 

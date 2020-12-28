@@ -1,4 +1,11 @@
 using System;
+using System.Collections.Generic;
+
+public struct RbyTilePairCollision {
+
+    public byte Tile1;
+    public byte Tile2;
+}
 
 public class RbyTileset {
     public Rby Game;
@@ -9,8 +16,8 @@ public class RbyTileset {
     public ushort CollisionPointer;
     public byte[] CounterTiles;
     public byte GrassTile;
-    public Map<byte, byte> TilePairCollisionsLand;
-    public Map<byte, byte> TilePairCollisionsWater;
+    public List<RbyTilePairCollision> TilePairCollisionsLand;
+    public List<RbyTilePairCollision> TilePairCollisionsWater;
     public PermissionSet LandPermissions;
     public PermissionSet WaterPermissions;
 
@@ -26,8 +33,8 @@ public class RbyTileset {
         GrassTile = data.u8();
         data.Seek(1);
 
-        TilePairCollisionsLand = new Map<byte, byte>();
-        TilePairCollisionsWater = new Map<byte, byte>();
+        TilePairCollisionsLand = new List<RbyTilePairCollision>();
+        TilePairCollisionsWater = new List<RbyTilePairCollision>();
 
         LandPermissions = new PermissionSet();
         LandPermissions.AddRange(game.ROM.From((game is Yellow ? 0x01 : 0x00) << 16 | CollisionPointer).Until(0xff));

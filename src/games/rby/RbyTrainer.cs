@@ -1,68 +1,13 @@
 using System.Collections.Generic;
 
-public class RbyPokemon {
-
-    public RbySpecies Species;
-    public ushort HP;
-    public byte Status;
-    public byte Status2;
-    public RbyMove[] Moves;
-    // Convert to common gen 1/2 DV enum
-    public ushort DVs;
-    public byte[] PP;
-    public byte Level;
-    public ushort MaxHP;
-    public ushort Attack;
-    public ushort Defense;
-    public ushort Speed;
-    public ushort Special;
-
-    public bool Asleep {
-        get { return SleepCounter != 0; }
-    }
-
-    public byte SleepCounter {
-        get { return (byte) (Status & 0x03); }
-    }
-
-    public bool Poisoned {
-        get { return (Status & 0x08) != 0; }
-    }
-
-    public bool Burned {
-        get { return (Status & 0x10) != 0; }
-    }
-
-    public bool Frozen {
-        get { return (Status & 0x20) != 0; }
-    }
-
-    public bool Paralyzed {
-        get { return (Status & 0x30) != 0; }
-    }
-
-    public bool XAccSetup {
-        get { return (Status2 & 0x01) != 0; }
-    }
-
-    public override string ToString() {
-        return string.Format("L{0} {1} DVs {2:X4}", Level, Species.Name, DVs);
-    }
-
-    public RbyPokemon(RbySpecies species, byte level) : this(species, level, 0x9888) { }
-
-    public RbyPokemon(RbySpecies species, byte level, ushort dvs) => (Species, Level, DVs) = (species, level, dvs);
-
-    public static implicit operator RbySpecies(RbyPokemon pokemon) { return pokemon.Species; }
-}
-
 public class RbyTrainerClass : ROMObject {
 
     public List<List<RbyPokemon>> Teams;
+
     public RbyTrainerClass(Rby game, byte id, int length, ByteStream data, ByteStream name) {
         Id = id;
         Name = game.Charmap.Decode(name.Until(Charmap.Terminator));
-        List<List<RbyPokemon>> Teams = new List<List<RbyPokemon>>();
+        Teams = new List<List<RbyPokemon>>();
 
         long initial = data.Position;
         while(data.Position - initial < length) {
@@ -80,5 +25,49 @@ public class RbyTrainerClass : ROMObject {
             }
             Teams.Add(team);
         }
+    }
+}
+
+public class RbyTrainer : RbySprite {
+
+    public RbyTrainerClass TrainerClass;
+    public byte TeamIndex;
+    public byte EventFlagBit;
+    public byte SightRange;
+    public ushort EventFlagAddress;
+
+    public List<RbyPokemon> Team {
+        get { return TrainerClass.Teams[TeamIndex]; }
+    }
+
+    public List<RbyTile> VisionTiles {
+        get {
+            List<RbyTile> tiles = new List<RbyTile>();
+            RbyTile current = Map[X, Y];
+            for(int i = 0; i < SightRange; i++) {
+                RbyTile next = current.Neighbor(Direction);
+                if(next == null) break;
+                tiles.Add(next);
+                current = next;
+            }
+            return tiles;
+        }
+    }
+
+    public RbyTrainer(RbySprite baseSprite, ByteStream data) : base(baseSprite, data) {
+        TrainerClass = Map.Game.TrainerClasses[data.u8()];
+        TeamIndex = (byte) (data.u8() - 1);
+
+        int textPointer = Map.Bank << 16 | Map.TextPointer + (TextId - 1) * 2;
+        int scriptPointer = Map.Bank << 16 | Map.Game.ROM.u16le(textPointer);
+        int headerPointer = Map.Bank << 16 | Map.Game.ROM.u16le(scriptPointer + 2);
+        ByteStream header = Map.Game.ROM.From(headerPointer);
+        EventFlagBit = header.u8();
+        SightRange = (byte) (header.u8() >> 4);
+        EventFlagAddress = header.u16le();
+    }
+
+    public bool IsDefeated(GameBoy gb) {
+        return (gb.CpuRead(EventFlagAddress) & EventFlagBit) == 0;
     }
 }

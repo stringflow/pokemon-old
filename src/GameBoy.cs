@@ -5,10 +5,10 @@ using System.Runtime.InteropServices;
 
 public enum LoadFlags : int {
 
-    GcbMode = 0x1,          // Treat the ROM as having CGB support regardless of what its header advertises.
-    GbaFlag = 0x2,          // Use GBA initial CPU register values in CGB mode.
-    MultiCartCompat = 0x4,  // Use heuristics to detect and support multicart MBCs disguised as MBC1.
-    SgbMode = 0x8,          // Treat the ROM as having SGB support regardless of what its header advertises.
+    GcbMode = 0x01,          // Treat the ROM as having CGB support regardless of what its header advertises.
+    GbaFlag = 0x02,          // Use GBA initial CPU register values in CGB mode.
+    MultiCartCompat = 0x04,  // Use heuristics to detect and support multicart MBCs disguised as MBC1.
+    SgbMode = 0x08,          // Treat the ROM as having SGB support regardless of what its header advertises.
     ReadOnlySav = 0x10,     // Prevent implicit saveSavedata calls for the ROM.
 }
 
@@ -28,10 +28,10 @@ public struct Registers {
 
 public enum SpeedupFlags : uint {
 
-    None = 0x0,
-    NoSound = 0x1,   // Skip generating sound samples.
-    NoPPUCall = 0x2, // Skip PPU calls. (breaks LCD interrupt)
-    NoVideo = 0x4,   // Skip writing to the video buffer.
+    None = 0x00,
+    NoSound = 0x01,   // Skip generating sound samples.
+    NoPPUCall = 0x02, // Skip PPU calls. (breaks LCD interrupt)
+    NoVideo = 0x04,   // Skip writing to the video buffer.
     All = 0xffffffff,
 }
 
@@ -49,7 +49,7 @@ public enum Joypad : byte {
     All = 0xff,
 }
 
-public class GameBoy : IDisposable {
+public partial class GameBoy : IDisposable {
 
     public const int SamplesPerFrame = 35112;
 
@@ -206,6 +206,16 @@ public class GameBoy : IDisposable {
         throw new NotImplementedException();
     }
 
+    // Executes the specified button presses while respecting consecutive input lag.
+    public void MenuPress(params Joypad[] joypads) {
+        foreach(Joypad joypad in joypads) {
+            if(CpuRead("hJoyLast") == (byte) joypad) {
+                Press(Joypad.None);
+            }
+            Press(joypad);
+        }
+    }
+
     // Helper function that executes the specified string path.
     public int Execute(string path) {
         return Execute(Array.ConvertAll(path.Split(" "), e => e.ToAction()));
@@ -246,9 +256,9 @@ public class GameBoy : IDisposable {
     }
 
     public void PlayBizhawkMovie(string bk2File) {
-        using (FileStream bk2Stream = File.OpenRead(bk2File))
-        using (ZipArchive zip = new ZipArchive(bk2Stream, ZipArchiveMode.Read))
-        using (StreamReader bk2Reader = new StreamReader(zip.GetEntry("Input Log.txt").Open())) {
+        using(FileStream bk2Stream = File.OpenRead(bk2File))
+        using(ZipArchive zip = new ZipArchive(bk2Stream, ZipArchiveMode.Read))
+        using(StreamReader bk2Reader = new StreamReader(zip.GetEntry("Input Log.txt").Open())) {
             PlayBizhawkInputLog(bk2Reader.ReadToEnd().Split('\n'));
         }
     }
@@ -260,10 +270,10 @@ public class GameBoy : IDisposable {
     public void PlayBizhawkInputLog(string[] lines) {
         Joypad[] joypadFlags = { Joypad.Up, Joypad.Down, Joypad.Left, Joypad.Right, Joypad.Start, Joypad.Select, Joypad.B, Joypad.A };
         lines = lines.Subarray(2, lines.Length - 3);
-        for (int i = 0; i < lines.Length; i++) {
+        for(int i = 0; i < lines.Length; i++) {
             Joypad joypad = Joypad.None;
-            for (int j = 0; j < joypadFlags.Length; j++) {
-                if (lines[i][j + 1] != '.') {
+            for(int j = 0; j < joypadFlags.Length; j++) {
+                if(lines[i][j + 1] != '.') {
                     joypad |= joypadFlags[j];
                 }
             }

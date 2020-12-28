@@ -74,7 +74,7 @@ public class GscTile : Tile<GscTile> {
         return Map[X, Y + 1];
     }
 
-    public override bool IsPassable(PermissionSet permissions) {
+    public override bool IsPassable(GscTile from, PermissionSet permissions) {
         GscWarp warp = Map.Warps[X, Y];
         if(warp != null && !warp.Allowed) return false;
 

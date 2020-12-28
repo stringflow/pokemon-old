@@ -53,7 +53,11 @@ public class RbyTile : Tile<RbyTile> {
         return Map[X, Y + 1];
     }
 
-    public override bool IsPassable(PermissionSet permissions) {
+    public string PokeworldLink {
+        get { return "https://gunnermaniac.com/pokeworld?local=" + Map.Id + "#" + X + "/" + Y; }
+    }
+
+    public override bool IsPassable(RbyTile from, PermissionSet permissions) {
         RbyWarp warp = Map.Warps[X, Y];
         if(warp != null && !warp.Allowed) return false;
 
@@ -61,6 +65,17 @@ public class RbyTile : Tile<RbyTile> {
         if(sprite != null && sprite.Movement != RbySpriteMovement.Walk) {
             return false;
         }
+
+        foreach(RbyTrainer trainer in Map.Trainers) {
+            // NOTE: This is not checking whether or not the trainer has been defeated.
+            //       To implement this there are two options:
+            //         (1) Read it from wram (using trainer.IsDefeated); but using the right GB instance to do this can become annoying. Perhaps this is a non issue anyways though.
+            //         (2) Have some kind of flag that the user sets manually.
+            if(trainer.VisionTiles.Contains(this)) return false;
+        }
+
+        // TODO: Don't always assume on land.
+        if(Map.Tileset.TilePairCollisionsLand.Contains(new RbyTilePairCollision { Tile1 = from.Collision, Tile2 = Collision })) return false;
 
         return permissions.IsAllowed(Collision);
     }
@@ -70,6 +85,7 @@ public class RbyTile : Tile<RbyTile> {
     }
 
     public override RbyTile WarpCheck() {
+        // TODO: This code does not take cave exits into account that don't always warp when walked on. (i.e. walked on from the side)
         RbyWarp sourceWarp = Map.Warps[X, Y];
         if(sourceWarp != null && sourceWarp.Allowed) {
             RbyMap destMap = Map.Game.Maps[sourceWarp.DestinationMap];
@@ -133,6 +149,8 @@ public class RbyMap : Map<RbyTile> {
     public byte BorderBlock;
     public DataList<RbyWarp> Warps;
     public DataList<RbySprite> Sprites;
+    public DataList<RbyTrainer> Trainers;
+    public DataList<RbyItemBall> ItemBalls;
 
     public RbyMap(Rby game, string name, byte id, ByteStream data) {
         Game = game;
@@ -172,14 +190,20 @@ public class RbyMap : Map<RbyTile> {
         Sprites = new DataList<RbySprite>();
         Sprites.IndexCallback = obj => obj.SpriteId;
         Sprites.PositionCallback = obj => (obj.X, obj.Y);
+        Trainers = new DataList<RbyTrainer>();
+        Trainers.IndexCallback = obj => obj.SpriteId;
+        Trainers.PositionCallback = obj => (obj.X, obj.Y);
+        ItemBalls = new DataList<RbyItemBall>();
+        ItemBalls.IndexCallback = obj => obj.SpriteId;
+        ItemBalls.PositionCallback = obj => (obj.X, obj.Y);
         byte numSprites = objectData.u8();
         for(byte i = 0; i < numSprites; i++) {
             RbySprite sprite = new RbySprite(game, this, i, objectData);
             Sprites.Add(sprite);
             if(sprite.IsTrainer) {
-                objectData.Seek(2);
+                Trainers.Add(new RbyTrainer(sprite, objectData));
             } else if(sprite.IsItem) {
-                objectData.Seek(1);
+                ItemBalls.Add(new RbyItemBall(sprite, objectData));
             }
         }
 
@@ -220,10 +244,10 @@ public class RbyMap : Map<RbyTile> {
             bool flip = false;
             int spriteIndex;
             switch(sprite.Direction) {
-                case 0xd0: spriteIndex = 0; break;
-                case 0xd1: spriteIndex = 1; break;
-                case 0xd2: spriteIndex = 2; break;
-                case 0xd3: spriteIndex = 2; flip = true; break;
+                case Action.Down: spriteIndex = 0; break;
+                case Action.Up: spriteIndex = 1; break;
+                case Action.Left: spriteIndex = 2; break;
+                case Action.Right: spriteIndex = 2; flip = true; break;
                 default: spriteIndex = 0; break;
             }
             Bitmap spriteBitmap = new Bitmap(16, 16);

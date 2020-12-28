@@ -16,8 +16,22 @@ public class RbySprite {
     public byte TextId;
     public bool IsTrainer;
     public bool IsItem;
-    public byte Direction; // TODO: Enum
+    public Action Direction;
     public byte Range;
+
+    // Constructor to call from subclasses (RbyTrainer, RbyItemBall)
+    public RbySprite(RbySprite baseSprite, ByteStream data) {
+        Map = baseSprite.Map;
+        SpriteId = baseSprite.SpriteId;
+        Y = baseSprite.Y;
+        X = baseSprite.X;
+        Movement = baseSprite.Movement;
+        TextId = baseSprite.TextId;
+        IsTrainer = baseSprite.IsTrainer;
+        IsItem = baseSprite.IsItem;
+        Direction = baseSprite.Direction;
+        Range = baseSprite.Range;
+    }
 
     public RbySprite(Rby game, RbyMap map, byte spriteId, ByteStream data) {
         Map = map;
@@ -31,12 +45,23 @@ public class RbySprite {
         IsTrainer = (TextId & 0x40) != 0;
         IsItem = (TextId & 0x80) != 0;
 
+        if(IsTrainer) TextId &= 0xbf;
+        if(IsItem) TextId &= 0x7f;
+
         if(Movement == RbySpriteMovement.Walk) {
             Range = rangeOrDirection;
         } else {
-            Direction = rangeOrDirection;
-            if(Direction == 0xff) {
-                Movement = RbySpriteMovement.Turn;
+            switch(rangeOrDirection) {
+                case 0xd0: Direction = Action.Down; break;
+                case 0xd1: Direction = Action.Up; break;
+                case 0xd2: Direction = Action.Left; break;
+                case 0xd3: Direction = Action.Right; break;
+                case 0xff:
+                    Movement = RbySpriteMovement.Turn;
+                    goto default;
+                default:
+                    Direction = Action.None;
+                    break;
             }
         }
     }

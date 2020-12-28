@@ -47,7 +47,7 @@ public class RbyData {
     }
 }
 
-public class Rby : GameBoy {
+public partial class Rby : GameBoy {
 
     // Maps ROM checksums to their parsed data.
     private static Dictionary<int, RbyData> ParsedROMs = new Dictionary<int, RbyData>();
@@ -149,10 +149,10 @@ public class Rby : GameBoy {
             string name;
             if(i > 0x0 && i <= 0x61) {
                 name = Charmap.Decode(nameStream.Until(Charmap.Terminator));
-            } else if(i >= 0xC4 && i <= 0xC8) {
+            } else if(i >= 0xc4 && i <= 0xc8) {
                 name = String.Format("HM{0}", (i + 1 - 0xc4).ToString("D2"));
-            } else if(i >= 0xC9 && i <= 0xFF) {
-                name = String.Format("TM{0}", (i + 1 - 0xC9).ToString("D2"));
+            } else if(i >= 0xc9 && i <= 0xff) {
+                name = String.Format("TM{0}", (i + 1 - 0xc9).ToString("D2"));
             } else {
                 name = String.Format("hex{0:X2}", i);
             }
@@ -170,7 +170,7 @@ public class Rby : GameBoy {
         int[] trainerDataOffsets = new int[numTrainerClasses];
 
         for(int i = 0; i < numTrainerClasses; i++) {
-            trainerDataOffsets[i] = 0x0E << 16 | trainerClassStream.u16le();
+            trainerDataOffsets[i] = 0x0e << 16 | trainerClassStream.u16le();
         }
 
         for(int trainerClass = 0; trainerClass < numTrainerClasses; trainerClass++) {
@@ -199,12 +199,12 @@ public class Rby : GameBoy {
     private void LoadTilePairCollisions() {
         byte[] data = ROM.From("TilePairCollisionsLand").Until(0xff);
         for(int i = 0; i < data.Length - 1; i += 3) {
-            Tilesets[data[i]].TilePairCollisionsLand.Add(data[i + 1], data[i + 2]);
+            Tilesets[data[i]].TilePairCollisionsLand.Add(new RbyTilePairCollision { Tile1 = data[i + 1], Tile2 = data[i + 2] });
         }
 
         data = ROM.From("TilePairCollisionsWater").Until(0xff);
         for(int i = 0; i < data.Length - 1; i += 3) {
-            Tilesets[data[i]].TilePairCollisionsWater.Add(data[i + 1], data[i + 2]);
+            Tilesets[data[i]].TilePairCollisionsWater.Add(new RbyTilePairCollision { Tile1 = data[i + 1], Tile2 = data[i + 2] });
         }
     }
 
@@ -230,72 +230,6 @@ public class Rby : GameBoy {
                 Maps.Add(new RbyMap(this, addressLabel.Substring(0, addressLabel.IndexOf("_h")), i, ROM.From(headerAddress)));
             }
         }
-    }
-
-    public override void Inject(Joypad joypad) {
-        CpuWrite("hJoyInput", (byte) joypad);
-    }
-
-    public override void Press(params Joypad[] joypads) {
-        foreach(Joypad joypad in joypads) {
-            do {
-                RunFor(1);
-                RunUntil("Joypad");
-            } while((CpuRead(SYM["wd730"]) & 0x20) != 0);
-            Inject(joypad);
-            AdvanceFrame();
-        }
-    }
-
-    public override int Execute(params Action[] actions) {
-        int ret = 0;
-
-        foreach(Action action in actions) {
-            switch(action) {
-                case Action.Left:
-                case Action.Right:
-                case Action.Up:
-                case Action.Down:
-                    Joypad joypad = (Joypad) ((byte) action);
-                    do {
-                        RunUntil("JoypadOverworld");
-                        Inject(joypad);
-                        ret = Hold(joypad, SYM["CollisionCheckOnLand.collision"], SYM["CollisionCheckOnWater.collision"], SYM["TryDoWildEncounter.CanEncounter"] + 6, SYM["OverworldLoopLessDelay.newBattle"] + 3);
-                        if(ret == SYM["TryDoWildEncounter.CanEncounter"] + 6) {
-                            return RunUntil("CalcStats");
-                        } else if(ret == SYM["CollisionCheckOnLand.collision"] || ret == SYM["CollisionCheckOnWater.collision"]) {
-                            return ret;
-                        }
-
-                        ret = SYM["JoypadOverworld"];
-                        RunUntil(SYM["JoypadOverworld"], SYM["EnterMap"] + 0x10);
-                    } while((CpuRead("wd736") & 0x40) != 0);
-                    break;
-                case Action.A:
-                    Inject(Joypad.A);
-                    AdvanceFrame(Joypad.A);
-                    ret = Hold(Joypad.A, "JoypadOverworld", "PrintLetterDelay");
-                    break;
-                case Action.StartB:
-                    Press(Joypad.Start, Joypad.B);
-                    ret = RunUntil("JoypadOverworld");
-                    break;
-                case Action.PokedexFlash:
-                    Press(Joypad.Start, Joypad.A, Joypad.B, Joypad.Start);
-                    ret = RunUntil("JoypadOverworld");
-                    break;
-                case Action.Delay:
-                    Inject(Joypad.None);
-                    RunUntil("OverworldLoop");
-                    ret = RunUntil("JoypadOverworld");
-                    break;
-                default:
-                    Debug.Assert(false, "Unknown Action: {0}", action);
-                    break;
-            }
-        }
-
-        return ret;
     }
 
     public override Font ReadFont() {

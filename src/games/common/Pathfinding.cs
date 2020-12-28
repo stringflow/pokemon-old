@@ -38,8 +38,8 @@ public static class Pathfinding {
                 if(ledgeHop) {
                     // If it is, the 'ledgeHopDest' is our new destination for this edge.
                     neighbor = ledgeHopDest;
-                } else if(!neighbor.IsPassable(permissions)) continue; // If it isn't a ledge hop, check if the tile is passable given the permissions provided.
-                                                                       // Ledge hops can skip this step as they are always passable.
+                } else if(!neighbor.IsPassable(current, permissions)) continue; // If it isn't a ledge hop, check if the tile is passable given the permissions provided.
+                                                                                // Ledge hops can skip this step as they are always passable.
 
                 // The cost of reaching the neighboring tile is the cost of the current tile plus the cost of the step. (either the ledge hop cost or the step cost)
                 int newCost = costs[current] + (ledgeHop ? current.LedgeCost() : stepCost);
