@@ -16,3 +16,10 @@ obj/
 roms/
 libgambatte.dll
 SDL2.dll
+
+# Generated Files
+*.png
+*.txt
+*.bin
+*.gqs
+movies/*

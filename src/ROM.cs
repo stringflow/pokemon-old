@@ -215,7 +215,7 @@ public class ByteStream : MemoryStream {
 
     // Consumes three bytes of data in the big-endian format.
     public int u24be() {
-        return (ushort) ((ReadByte() << 16) | (ReadByte() << 8) | ReadByte());
+        return (int) ((ReadByte() << 16) | (ReadByte() << 8) | ReadByte());
     }
 
     // Consumes four bytes of data in the little-endian format.

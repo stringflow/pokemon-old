@@ -142,16 +142,16 @@ public static class Totodile {
         }
     }
 
-    public static void Test(byte x, byte y, byte hour, byte minute, byte momStep, byte audio, byte frameType, byte menuAccount, byte igt, int delay, string path) {
+    public static void Test(byte x, byte y, byte hour, byte minute, byte momStep, byte audio, byte frameType, byte menuAccount, byte igt, int fsback, int delay, string path) {
         MakeSave(x, y, hour, minute, momStep, audio, frameType, menuAccount, igt);
         Gsc gb = new Gsc("roms/pokegold.gbc");
         gb.SetSpeedupFlags(SpeedupFlags.NoSound | SpeedupFlags.NoVideo);
         gb.Hold(Joypad.Start, 0x100);
         byte[] timesecState = gb.SaveState();
-        timesecState[0x9b13] = 0;
-        timesecState[0x9b14] = 0;
-        timesecState[0x9b15] = 0;
-        timesecState[0x9b16] = 120;
+        timesecState[gb.SaveStateLabels["timesec"] + 0] = 0;
+        timesecState[gb.SaveStateLabels["timesec"] + 1] = 0;
+        timesecState[gb.SaveStateLabels["timesec"] + 2] = 0;
+        timesecState[gb.SaveStateLabels["timesec"] + 3] = 120;
         gb.LoadState(timesecState);
         gb.Hold(Joypad.Start, "GetJoypad");
         gb.AdvanceFrame(Joypad.Start);
@@ -159,11 +159,20 @@ public static class Totodile {
         gb.AdvanceFrame(Joypad.Start);
         gb.Hold(Joypad.A, "GetJoypad");
         gb.AdvanceFrame(Joypad.A);
+        for(int i = 0; i < fsback; i++) {
+            gb.Hold(Joypad.B, "GetJoypad");
+            gb.AdvanceFrame(Joypad.B);
+            gb.Hold(Joypad.A, "GetJoypad");
+            gb.AdvanceFrame(Joypad.A);
+        }
         gb.Hold(Joypad.Left, "GetJoypad");
         gb.AdvanceFrame(Joypad.Left);
         for(int i = 0; i < delay; i++) {
             gb.AdvanceFrame(Joypad.Left);
         }
+        gb.AdvanceFrame(Joypad.A);
+        gb.AdvanceFrame(Joypad.A);
+        gb.AdvanceFrame(Joypad.A);
         gb.Hold(Joypad.A, "OWPlayerInput");
         gb.Execute(path);
         gb.Inject(Joypad.A);
@@ -187,7 +196,8 @@ public static class Totodile {
         gb.InjectMenu(Joypad.A | Joypad.B);
         gb.Hold(Joypad.A | Joypad.B, "CalcMonStats");
         int dvs = gb.CpuRead("wPartyMon1DVs") << 8 | gb.CpuRead(gb.SYM["wPartyMon1DVs"] + 1);
-        Console.WriteLine("0x{0:x4}", dvs);
+        Console.Write("0x{0:x4}", dvs);
+        gb.Dispose();
     }
 
     public static void StartSearch(int numThreads) {
@@ -256,10 +266,10 @@ public static class Totodile {
                                                 gb.SetSpeedupFlags(SpeedupFlags.NoSound | SpeedupFlags.NoVideo);
                                                 gb.Hold(Joypad.Start, 0x100);
                                                 byte[] timesecState = gb.SaveState();
-                                                timesecState[0x9b13] = 0;
-                                                timesecState[0x9b14] = 0;
-                                                timesecState[0x9b15] = 0;
-                                                timesecState[0x9b16] = 120;
+                                                timesecState[gb.SaveStateLabels["timesec"] + 0] = 0;
+                                                timesecState[gb.SaveStateLabels["timesec"] + 1] = 0;
+                                                timesecState[gb.SaveStateLabels["timesec"] + 2] = 0;
+                                                timesecState[gb.SaveStateLabels["timesec"] + 3] = 120;
                                                 gb.LoadState(timesecState);
                                             }
                                             gb.Hold(Joypad.Start, "GetJoypad");

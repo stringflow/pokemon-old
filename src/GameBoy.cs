@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
@@ -63,6 +64,7 @@ public partial class GameBoy : IDisposable {
 
     public ROM ROM;
     public SYM SYM;
+    public Dictionary<string, int> SaveStateLabels;
     public Scene Scene;
     public ulong EmulatedSamples;
 
@@ -85,14 +87,27 @@ public partial class GameBoy : IDisposable {
         InputGetter = () => CurrentJoypad;
         Libgambatte.gambatte_setinputgetter(Handle, InputGetter);
 
-        SetSpeedupFlags(speedupFlags);
-
-        StateSize = Libgambatte.gambatte_savestate(Handle, null, 160, null);
-
         string symPath = "sym/" + Path.GetFileNameWithoutExtension(romFile) + ".sym";
         if(File.Exists(symPath)) {
             SYM = new SYM(symPath);
             ROM.Symbols = SYM;
+        }
+
+        SetSpeedupFlags(speedupFlags);
+        StateSize = Libgambatte.gambatte_savestate(Handle, null, 160, null);
+
+        SaveStateLabels = new Dictionary<string, int>();
+        byte[] state = SaveState();
+        ByteStream data = new ByteStream(state);
+        data.Seek(3);
+        data.Seek(data.u24be());
+        while(data.Position < state.Length) {
+            string label = "";
+            byte character;
+            while((character = data.u8()) != 0x00) label += Convert.ToChar(character);
+            int size = data.u24be();
+            SaveStateLabels[label] = (int) data.Position;
+            data.Seek(size);
         }
     }
 
