@@ -5,6 +5,7 @@ using System.Collections.Generic;
 public class RbyData {
 
     public Charmap Charmap;
+    public Dictionary<RbyType, Dictionary<RbyType, byte>> TypeEffectivenessTable = new Dictionary<RbyType, Dictionary<RbyType, byte>>();
     public DataList<RbyMove> Moves = new DataList<RbyMove>();
     public DataList<RbySpecies> Species = new DataList<RbySpecies>();
     public DataList<RbyItem> Items = new DataList<RbyItem>();
@@ -62,6 +63,10 @@ public partial class Rby : GameBoy {
         get { return Data.Moves; }
     }
 
+    public Dictionary<RbyType, Dictionary<RbyType, byte>> TypeEffectivenessTable {
+        get { return Data.TypeEffectivenessTable; }
+    }
+
     public DataList<RbySpecies> Species {
         get { return Data.Species; }
     }
@@ -93,6 +98,7 @@ public partial class Rby : GameBoy {
         } else {
             // Otherwise the new ROM will be parsed.
             Data = new RbyData();
+            LoadTypeEffectivenessTable();
             LoadMoves();
             LoadSpecies();
             LoadItems();
@@ -102,6 +108,30 @@ public partial class Rby : GameBoy {
             LoadTilePairCollisions();
             LoadMaps();
             ParsedROMs[ROM.GlobalChecksum] = Data;
+        }
+    }
+
+    private void LoadTypeEffectivenessTable() {
+        byte[] data = ROM.From("TypeEffects").Until(0xff);
+        for(int i = 0; i < data.Length - 1; i += 3) {
+            RbyType type1 = (RbyType) data[i + 0];
+            RbyType type2 = (RbyType) data[i + 1];
+            byte effectiveness = data[i + 2];
+
+            if(!TypeEffectivenessTable.ContainsKey(type1)) TypeEffectivenessTable[type1] = new Dictionary<RbyType, byte>();
+            TypeEffectivenessTable[type1][type2] = effectiveness;
+        }
+    }
+
+    private void LoadMoves() {
+        int movesStart = SYM["Moves"];
+        int numMoves = (SYM["BaseStats"] - movesStart) / (SYM["MoveEnd"] - movesStart);
+
+        ByteStream nameStream = ROM.From("MoveNames");
+        ByteStream dataStream = ROM.From(movesStart);
+
+        for(int i = 0; i < numMoves; i++) {
+            Moves.Add(new RbyMove(this, dataStream, nameStream));
         }
     }
 
@@ -127,18 +157,6 @@ public partial class Rby : GameBoy {
                 RbySpecies species = new RbySpecies(this, (byte) i);
                 Species.Add(new RbySpecies(this, (byte) i));
             }
-        }
-    }
-
-    private void LoadMoves() {
-        int movesStart = SYM["Moves"];
-        int numMoves = (SYM["BaseStats"] - movesStart) / (SYM["MoveEnd"] - movesStart);
-
-        ByteStream nameStream = ROM.From("MoveNames");
-        ByteStream dataStream = ROM.From(movesStart);
-
-        for(int i = 0; i < numMoves; i++) {
-            Moves.Add(new RbyMove(this, dataStream, nameStream));
         }
     }
 
@@ -268,5 +286,10 @@ public partial class Rby : GameBoy {
                     new byte[] { 160, 160, 160 },
                     new byte[] { 88, 88, 88 },
                     new byte[] { 16, 16, 16 }};
+    }
+
+    public int GetTypeEffectiveness(RbyType type1, RbyType type2) {
+        if(!TypeEffectivenessTable[type1].ContainsKey(type2)) return 10;
+        return TypeEffectivenessTable[type1][type2];
     }
 }

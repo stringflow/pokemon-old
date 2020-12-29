@@ -21,16 +21,6 @@ public enum GscType {
     Dark
 }
 
-public enum GscGrowthRate {
-
-    MediumFast,
-    SlightlyFast,
-    SlightlySlow,
-    MediumSlow,
-    Fast,
-    Slow
-}
-
 public enum GscEggGroup {
 
     Monster = 1,
@@ -71,7 +61,7 @@ public class GscSpecies : ROMObject {
     public byte Unknown2;
     public byte FrontSpriteWidth;
     public byte FrontSpriteHeight;
-    public GscGrowthRate GrowthRate;
+    public GrowthRate GrowthRate;
     public GscEggGroup EggGroup1;
     public GscEggGroup EggGroup2;
 
@@ -98,7 +88,7 @@ public class GscSpecies : ROMObject {
         FrontSpriteWidth = data.Nybble();
         FrontSpriteHeight = data.Nybble();
         data.Seek(4); // 4 unused bytes
-        GrowthRate = (GscGrowthRate) data.u8();
+        GrowthRate = (GrowthRate) data.u8();
         EggGroup1 = (GscEggGroup) data.Nybble();
         EggGroup2 = (GscEggGroup) data.Nybble();
         data.Seek(8); // TODO: HMs/TMs

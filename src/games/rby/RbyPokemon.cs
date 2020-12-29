@@ -81,6 +81,11 @@ public class RbyPokemon {
     public RbyPokemon(RbySpecies species, byte level, ushort dvs) {
         (Species, Level, DVs) = (species, level, dvs);
         CalculateUnmodifiedStats();
+        MaxHP = UnmodifiedMaxHP;
+        Attack = UnmodifiedAttack;
+        Defense = UnmodifiedDefense;
+        Speed = UnmodifiedSpeed;
+        Special = UnmodifiedSpecial;
     }
 
     public void CalculateUnmodifiedStats() {

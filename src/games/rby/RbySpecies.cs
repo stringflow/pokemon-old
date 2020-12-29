@@ -18,15 +18,11 @@ public enum RbyType {
     Dragon
 }
 
-// Should generalize growth rate enum between gen 1/2?
-public enum RbyGrowthRate {
+public static class RbyTypeFunctions {
 
-    MediumFast,
-    SlightlyFast,
-    SlightlySlow,
-    MediumSlow,
-    Fast,
-    Slow
+    public static bool IsSpecial(this RbyType type) {
+        return type >= RbyType.Fire;
+    }
 }
 
 public class RbySpecies : ROMObject {
@@ -47,7 +43,7 @@ public class RbySpecies : ROMObject {
     public ushort FrontSpritePointer;
     public ushort BackSpritePointer;
     public RbyMove[] BaseMoves;
-    public RbyGrowthRate GrowthRate;
+    public GrowthRate GrowthRate;
 
     public RbySpecies(Rby game, byte indexNumber, ByteStream data) : this(game, indexNumber) {
         Game = game;
@@ -69,7 +65,7 @@ public class RbySpecies : ROMObject {
                                     Game.Moves[data.u8()],
                                     Game.Moves[data.u8()],
                                     Game.Moves[data.u8()] };
-        GrowthRate = (RbyGrowthRate) data.u8();
+        GrowthRate = (GrowthRate) data.u8();
         data.Seek(8); // TODO: HMs/TMs
     }
 
