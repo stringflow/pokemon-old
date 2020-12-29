@@ -93,7 +93,7 @@ public partial class Rby {
                 cameFrom = CpuReadLE<ushort>(stackPointer + 2);
             }
 
-            if(Array.IndexOf(textAddrs, cameFrom) == -1 && CpuRead("wJoyIgnore") < 0xfc && (CpuRead("wd730") & 0xa1) == 0) {
+            if(Array.IndexOf(textAddrs, cameFrom) == -1 && (cameFrom != SYM["JoypadOverworld"] + 0xd || (CpuRead("wJoyIgnore") < 0xfc && (CpuRead("wd730") & 0xa1) == 0))) {
                 RunFor(1);
                 break;
             }

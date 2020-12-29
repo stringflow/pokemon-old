@@ -108,7 +108,7 @@ public partial class Rby : GameBoy {
     private void LoadSpecies() {
         const int maxIndexNumber = 190;
 
-        int numBaseStats = (SYM["BaseStatsEnd"] - SYM["BaseStats"]) / (SYM["MonBaseStatsEnd"] - SYM["MonBaseStats"]);
+        int numBaseStats = this is Yellow ? 151 : 150;
         byte[] pokedex = ROM.Subarray(SYM["PokedexOrder"], maxIndexNumber);
         ByteStream data = ROM.From("BaseStats");
 
@@ -227,7 +227,7 @@ public partial class Rby : GameBoy {
             int headerAddress = bankStream.u8() << 16 | addressStream.u16le();
             if(SYM.Contains(headerAddress)) {
                 string addressLabel = SYM[headerAddress];
-                Maps.Add(new RbyMap(this, addressLabel.Substring(0, addressLabel.IndexOf("_h")), i, ROM.From(headerAddress)));
+                if(addressLabel.EndsWith("_h")) Maps.Add(new RbyMap(this, addressLabel.Substring(0, addressLabel.IndexOf("_h")), i, ROM.From(headerAddress)));
             }
         }
     }
