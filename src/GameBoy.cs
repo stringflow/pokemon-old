@@ -41,7 +41,7 @@ public partial class GameBoy : IDisposable {
     public const int SamplesPerFrame = 35112;
 
     public IntPtr Handle;
-    public byte[] VideoBuffer;
+    public byte[] VideoBuffer; // Although shared library outputs in the ARGB little-endian format, the data is interpreted as big-endian making it effectively BGRA.
     public byte[] AudioBuffer;
     public InputGetter InputGetter;
     public Joypad CurrentJoypad;
@@ -131,6 +131,10 @@ public partial class GameBoy : IDisposable {
         return hitaddress;
     }
 
+    public void AdvanceFrames(int amount, Joypad joypad = Joypad.None) {
+        for(int i = 0; i < amount; i++) AdvanceFrame(joypad);
+    }
+
     // Emulates while holding the specified input until the program counter hits one of the specified breakpoints.
     public unsafe int Hold(Joypad joypad, params int[] addrs) {
         fixed(int* addrPtr = addrs) { // Note: Not fixing the pointer causes an AccessValidationException.
@@ -157,6 +161,12 @@ public partial class GameBoy : IDisposable {
     // Reads one byte of data from the CPU bus.
     public byte CpuRead(int addr) {
         return Libgambatte.gambatte_cpuread(Handle, (ushort) addr);
+    }
+
+    // Get reg and flag values.
+    public Registers GetRegisters() {
+        Libgambatte.gambatte_getregs(Handle, out Registers regs);
+        return regs;
     }
 
     // Returns the emulator state as a buffer.
@@ -320,7 +330,7 @@ public static unsafe class Libgambatte {
     // Emulates until at least 'samples' audio samples are produced in the supplied audio buffer, or until a video frame has been drawn.
     // There are 35112 audio (stereo) samples in a video frame.
     // May run up to 2064 audio samples too long.
-    // The video buffer must have space for at least 160x144 RGB32 (native endian) pixels.
+    // The video buffer must have space for at least 160x144 ARGB32 (native endian) pixels.
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern int gambatte_runfor(IntPtr gb, byte[] videoBuf, int pitch, byte[] audioBuf, ref int samples);
 

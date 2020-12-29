@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 public partial class Rby {
 
@@ -30,7 +31,7 @@ public partial class Rby {
                     do {
                         RunUntil("JoypadOverworld");
                         Inject(joypad);
-                        ret = Hold(joypad, SYM["CollisionCheckOnLand.collision"], SYM["CollisionCheckOnWater.collision"], SYM["TryDoWildEncounter.CanEncounter"] + 6, SYM["OverworldLoopLessDelay.newBattle"] + 3);
+                        ret = Hold(joypad, SYM["HandleLedges.foundMatch"], SYM["CollisionCheckOnLand.collision"], SYM["CollisionCheckOnWater.collision"], SYM["TryDoWildEncounter.CanEncounter"] + 6, SYM["OverworldLoopLessDelay.newBattle"] + 3);
                         if(ret == SYM["TryDoWildEncounter.CanEncounter"] + 6) {
                             return RunUntil("CalcStats");
                         } else if(ret == SYM["CollisionCheckOnLand.collision"] || ret == SYM["CollisionCheckOnWater.collision"]) {
@@ -39,7 +40,7 @@ public partial class Rby {
 
                         ret = SYM["JoypadOverworld"];
                         RunUntil(SYM["JoypadOverworld"], SYM["EnterMap"] + 0x10);
-                    } while((CpuRead("wd736") & 0x40) != 0);
+                    } while((CpuRead("wd736") & 0x42) != 0);
                     break;
                 case Action.A:
                     Inject(Joypad.A);
@@ -74,32 +75,43 @@ public partial class Rby {
         RunUntil("JoypadOverworld");
     }
 
-    public void ClearText() {
-        Joypad joypad = Joypad.A;
-        int ret;
-        do {
-            ret = RunUntil("ManualTextScroll", "HandleMenuInput", "PrintStatsBox.PrintStats", "TextCommand_PAUSE", "DisableLCD");
-            joypad = joypad.Opposite();
+    public void ClearText(Joypad hold = Joypad.None) {
+        int[] textAddrs = {
+            SYM["PrintLetterDelay.checkButtons"] + 0x3,
+            SYM["WaitForTextScrollButtonPress.skipAnimation"] + 0xa,
+            SYM["HoldTextDisplayOpen"] + 0x3,
+            (SYM["ShowPokedexDataInternal.waitForButtonPress"] & 0xffff) + 0x3,
+        };
+        int cameFrom;
+        int stackPointer;
+        while(true) {
+            Hold(hold, "Joypad");
+            stackPointer = GetRegisters().SP;
+            cameFrom = CpuReadLE<ushort>(stackPointer);
 
-            if(ret == SYM["ManualTextScroll"] || ret == SYM["PrintStatsBox.PrintStats"]) {
-                Inject(joypad);
-                AdvanceFrame(joypad);
-            } else if(ret == SYM["TextCommand_PAUSE"]) {
-                Inject(joypad);
-                Hold(joypad, "Joypad");
-            } else if(ret == SYM["DisableLCD"]) {
-                // find a better breakpoint for when a battle is over?
-                return;
-            } else {
-                RunUntil("Joypad");
+            if(cameFrom == SYM["JoypadLowSensitivity"] + 0x3) {
+                cameFrom = CpuReadLE<ushort>(stackPointer + 2);
             }
-        } while(ret != SYM["HandleMenuInput"]);
+
+            if(Array.IndexOf(textAddrs, cameFrom) == -1 && CpuRead("wJoyIgnore") < 0xfc && (CpuRead("wd730") & 0xa1) == 0) {
+                RunFor(1);
+                break;
+            }
+
+            if(cameFrom != textAddrs[0]) {
+                Joypad advance = hold == Joypad.None ? Joypad.A : (Joypad) (CpuRead("hJoyLast") ^ 0x3);
+                Inject(advance);
+                AdvanceFrame(advance);
+            } else {
+                AdvanceFrame(hold);
+            }
+        }
     }
 
     public void UseMove(int slot) {
-        OpenFightMenu();
+        if(CpuRead("wTopMenuItemX") != 0x9) MenuPress(Joypad.Left);
+        SelectMenuItem(0);
         SelectMenuItem(slot);
-        Press(Joypad.A);
     }
 
     public void UseMove1() {
@@ -118,77 +130,48 @@ public partial class Rby {
         UseMove(3);
     }
 
-    public void UseItem(string item) {
-        BagScroll(item);
-        Press(Joypad.A);
+    public void UseItem(string item, int target = -1) {
+        UseItem(Items[item], target);
     }
 
-    public void UseXItem(string item) {
-        UseItem(item);
-        RunUntil("DoneText");
-        Inject(Joypad.B);
-        AdvanceFrame(Joypad.B);
-    }
-
-    public void UseXAttack() {
-        UseXItem("X ATTACK");
-    }
-
-    public void UseXDefense() {
-        UseXItem("X DEFENSE");
-    }
-
-    public void UseXSpeed() {
-        UseXItem("X SPEED");
-    }
-
-    public void UseXSpecial() {
-        UseXItem("X SPECIAL");
-    }
-
-    public void UseXAccuracy() {
-        UseXItem("X ACCURACY");
-    }
-
-    public void UseHealingItem(string item) {
-        UseItem(item);
-        Press(Joypad.None, Joypad.A, Joypad.B);
-    }
-
-    public void UsePokeFlute() {
-        BagScroll("POKE FLUTE");
-        Press(Joypad.A);
-    }
-
-    public void OpenFightMenu() {
-        if(CpuRead("wCurrentMenuItem") == 1) Press(Joypad.Up);
-        Press(Joypad.A);
-        RunUntil("Joypad");
-    }
-
-    public void OpenItemBag() {
-        if(CpuRead("wCurrentMenuItem") == 0) Press(Joypad.Down);
-        Press(Joypad.A);
-    }
-
-    public void BagScroll(string item) {
+    public void UseItem(RbyItem item, int target) {
+        if(CpuRead("wTopMenuItemX") != 0x9) MenuPress(Joypad.Left);
+        SelectMenuItem(1);
         SelectListItem(Bag.IndexOf(item));
+
+        switch(item.ExecutionPointerLabel) {
+            case "ItemUseMedicine":
+                SelectMenuItem(target != -1 ? target : CpuRead("wCurrentMenuItem"));
+                MenuPress(Joypad.A, Joypad.B);
+                break;
+            case "ItemUseXAccuracy":
+            case "ItemUseXStat":
+                RunUntil("DoneText");
+                Inject(Joypad.B);
+                AdvanceFrame(Joypad.B);
+                break;
+                // TODO: More
+        }
     }
 
-    public void BagScroll(RbyItem item) {
-        SelectListItem(Bag.IndexOf(item));
+    public void Switch(int slot) {
+        if(CpuRead("wTopMenuItemX") != 0xf) MenuPress(Joypad.Right);
+        SelectMenuItem(0);
+        SelectMenuItem(slot);
+        MenuPress(Joypad.A);
     }
 
     public void SelectMenuItem(int target) {
+        RunUntil("HandleMenuInput_.getJoypadState");
         MenuScroll(target, CpuRead("wCurrentMenuItem"), CpuRead("wMaxMenuItem"), CpuRead("wMenuWrappingEnabled") > 0);
     }
 
     public void SelectListItem(int target) {
+        RunUntil("HandleMenuInput_.getJoypadState");
         MenuScroll(target, CpuRead("wCurrentMenuItem") + CpuRead("wListScrollOffset"), CpuRead("wListCount"), false);
     }
 
     private void MenuScroll(int target, int current, int max, bool wrapping) {
-        RunUntil("HandleMenuInput_.getJoypadState");
         if((CpuRead(0xfff6 + (this is Yellow ? 4 : 0)) & 0x02) > 0) { // Battle menu
             current--;
             max = CpuRead("wNumMovesMinusOne");
@@ -211,5 +194,6 @@ public partial class Rby {
         for(int i = 0; i < amount; i++) {
             MenuPress(input);
         }
+        MenuPress(Joypad.A);
     }
 }
