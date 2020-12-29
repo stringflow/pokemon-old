@@ -10,7 +10,7 @@ public enum LoadFlags : int {
     GbaFlag = 0x02,          // Use GBA initial CPU register values in CGB mode.
     MultiCartCompat = 0x04,  // Use heuristics to detect and support multicart MBCs disguised as MBC1.
     SgbMode = 0x08,          // Treat the ROM as having SGB support regardless of what its header advertises.
-    ReadOnlySav = 0x10,     // Prevent implicit saveSavedata calls for the ROM.
+    ReadOnlySav = 0x10,      // Prevent implicit saveSavedata calls for the ROM.
 }
 
 public struct Registers {

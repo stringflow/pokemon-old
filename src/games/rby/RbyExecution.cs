@@ -85,25 +85,47 @@ public partial class Rby {
         int cameFrom;
         int stackPointer;
         while(true) {
+            // Hold the specified input until the joypad state is polled.
             Hold(hold, "Joypad");
+            // Read the current position of the stack.
             stackPointer = GetRegisters().SP;
+            // When the 'Joypad' routine is called, the address of the following instruction is pushed onto the stack.
+            // By reading the 2 highest bytes from the stack, it is possible to figure out from where the 'Joypad' call originated.
+            // This will be used to make decisions later on.
             cameFrom = CpuReadLE<ushort>(stackPointer);
 
+            // Some routines call 'JoypadLowSensitivity' (which then calls 'Joypad'), so the next 2 bytes from the stack have to be read to find the origin of the call.
             if(cameFrom == SYM["JoypadLowSensitivity"] + 0x3) {
                 cameFrom = CpuReadLE<ushort>(stackPointer + 2);
             }
 
-            if(Array.IndexOf(textAddrs, cameFrom) == -1 && (cameFrom != SYM["JoypadOverworld"] + 0xd || (CpuRead("wJoyIgnore") < 0xfc && (CpuRead("wd730") & 0xa1) == 0))) {
-                RunFor(1);
-                break;
+            // If the call did not originate from any of the text handling routines, it may be time to break out of the loop.
+            if(Array.IndexOf(textAddrs, cameFrom) == -1) {
+                // If the call originated from 'JoypadOverworld', additional criteria have to be met to warrent a break.
+                // (1) More Buttons than just A and B have to be allowed,
+                // (2) No sprite can currently be moved by a script, 
+                // (3) Joypad input must not be ignored,
+                // (4) Joypad states can not be simulated (player is in a cutscene)
+                if(cameFrom != SYM["JoypadOverworld"] + 0xd || (CpuRead("wJoyIgnore") < 0xfc &&
+                                                                (CpuRead("wd730") & 0xa1) == 0)) {
+                    // If it is time to break out of the loop, run for 1 sample to allow for continuous calls of this function.
+                    RunFor(1);
+                    break;
+                }
             }
 
-            if(cameFrom != textAddrs[0]) {
-                Joypad advance = hold == Joypad.None ? Joypad.A : (Joypad) (CpuRead("hJoyLast") ^ 0x3);
+            if(cameFrom == textAddrs[0]) {
+                // If the call originated from 'PrintLetterDelay', advance a frame with the specified button to hold.
+                AdvanceFrame(hold);
+            } else {
+                // If the call did not originate from 'PrintLetterDelay', advance the textbox with the opposite button used in the previous frame.
+                byte previous = (byte) (CpuRead("hJoyLast") & (byte) (Joypad.A | Joypad.B));
+                Joypad advance = previous == 0 ? Joypad.A                   // If neither A or B have been pressed on the previous frame, default to clear the text box with A.
+                                               : (Joypad) (previous ^ 0x3); // Otherwise clear with the opposite button. This is achieved by XORing the value by 3.
+                                                                            // (Joypad.A) 01 xor 11 = 10 (Joypad.B)
+                                                                            // (Joypad.B) 10 xor 11 = 01 (Joypad.A)
                 Inject(advance);
                 AdvanceFrame(advance);
-            } else {
-                AdvanceFrame(hold);
             }
         }
     }
@@ -172,28 +194,32 @@ public partial class Rby {
     }
 
     private void MenuScroll(int target, int current, int max, bool wrapping) {
-        if((CpuRead(0xfff6 + (this is Yellow ? 4 : 0)) & 0x02) > 0) { // Battle menu
+        if((CpuRead(0xfff6 + (this is Yellow ? 4 : 0)) & 0x02) > 0) {
+            // The move selection is its own thing for some reason, so the input values are wrong have to be adjusted.
             current--;
             max = CpuRead("wNumMovesMinusOne");
             wrapping = true;
         }
-        Joypad input;
-        int amount;
-        if(!wrapping) {
-            input = target < current ? Joypad.Up : Joypad.Down;
-            amount = Math.Abs(current - target);
-        } else {
-            input = target > current ? Joypad.Down : Joypad.Up;
-            amount = Math.Abs(current - target);
-            if(amount > max / 2) {
-                amount = max - amount + 1;
-                input ^= (Joypad) 0xc0;
-            }
+        // The input is either Up or Down depending on whether the 'target' slot is above or below the 'current' slot.
+        Joypad input = target < current ? Joypad.Up : Joypad.Down;
+        // The number of inputs needed is the distance between the 'current' slot and the 'target' slot.
+        int amount = Math.Abs(current - target);
+
+        // If the menu wraps around, the number of inputs should never exceed half of the menus size.
+        if(wrapping && amount > max / 2) {
+            // If it does exceed, going the other way is fewer inputs.
+            amount = max - amount + 1;
+            input ^= (Joypad) 0xc0; // Switch to the button. This is achieved by XORing the value by 0xc0.
+                                    // (Joypad.Down) 01000000 xor 11000000 = 10000000 (Joypad.Up)
+                                    // (Joypad.Up)   10000000 xor 11000000 = 01000000 (Joypad.Down)
         }
 
+        // Press the 'input' 'amount' of times.
         for(int i = 0; i < amount; i++) {
             MenuPress(input);
         }
+
+        // Now the cursor is over the 'target' slot, press A to select it.
         MenuPress(Joypad.A);
     }
 }
