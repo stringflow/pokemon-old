@@ -209,7 +209,7 @@ public partial class Rby {
         if(wrapping && amount > max / 2) {
             // If it does exceed, going the other way is fewer inputs.
             amount = max - amount + 1;
-            input ^= (Joypad) 0xc0; // Switch to the button. This is achieved by XORing the value by 0xc0.
+            input ^= (Joypad) 0xc0; // Switch to the other button. This is achieved by XORing the value by 0xc0.
                                     // (Joypad.Down) 01000000 xor 11000000 = 10000000 (Joypad.Up)
                                     // (Joypad.Up)   10000000 xor 11000000 = 01000000 (Joypad.Down)
         }
