@@ -87,7 +87,7 @@ public partial class GameBoy : IDisposable {
         InputGetter = () => CurrentJoypad;
         Libgambatte.gambatte_setinputgetter(Handle, InputGetter);
 
-        string symPath = "sym/" + Path.GetFileNameWithoutExtension(romFile) + ".sym";
+        string symPath = "symfiles/" + Path.GetFileNameWithoutExtension(romFile) + ".sym";
         if(File.Exists(symPath)) {
             SYM = new SYM(symPath);
             ROM.Symbols = SYM;
