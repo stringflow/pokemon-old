@@ -38,7 +38,7 @@ public class GscData {
     }
 }
 
-public class Gsc : GameBoy {
+public partial class Gsc : GameBoy {
 
     // Maps ROM checksums to their parsed data.
     private static Dictionary<int, GscData> ParsedROMs = new Dictionary<int, GscData>();
@@ -137,51 +137,12 @@ public class Gsc : GameBoy {
         }
     }
 
-    public override void Inject(Joypad joypad) {
-        CpuWrite("hJoyPressed", (byte) joypad);
-        CpuWrite("hJoyDown", (byte) joypad);
-    }
-
-    public override void InjectMenu(Joypad joypad) {
-        CpuWrite("hJoypadDown", (byte) joypad);
-    }
-
     public int WalkTo(int targetX, int targetY) {
         GscMap map = Maps[CpuRead("wMapGroup") << 8 | CpuRead("wMapNumber")];
         GscTile current = map[CpuRead("wXCoord"), CpuRead("wYCoord")];
         GscTile target = map[targetX, targetY];
         List<Action> path = Pathfinding.FindPath(map, current, 17, map.Tileset.LandPermissions, target); // TODO: Bike check
         return Execute(path.ToArray());
-    }
-
-    public override int Execute(params Action[] actions) {
-        int ret = 0;
-        foreach(Action action in actions) {
-            switch(action & ~Action.A) {
-                case Action.Right:
-                case Action.Left:
-                case Action.Up:
-                case Action.Down:
-                    Joypad input = (Joypad) action;
-                    Inject(input);
-                    ret = Hold(input, "CountStep", "ChooseWildEncounter.startwildbattle", "PrintLetterDelay", "DoPlayerMovement.BumpSound");
-                    if(ret == SYM["CountStep"]) {
-                        ret = Hold(input, "OWPlayerInput", "ChooseWildEncounter.startwildbattle");
-                    }
-                    break;
-                case Action.StartB:
-                    Inject(Joypad.Start);
-                    AdvanceFrame(Joypad.Start);
-                    Hold(Joypad.B, "GetJoypad");
-                    InjectMenu(Joypad.B);
-                    ret = Hold(Joypad.B, "OWPlayerInput");
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        return ret;
     }
 
     public override Font ReadFont() {
