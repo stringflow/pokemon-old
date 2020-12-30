@@ -32,6 +32,12 @@ public class RbyPokemon {
     public ushort UnmodifiedDefense;
     public ushort UnmodifiedSpeed;
     public ushort UnmodifiedSpecial;
+    public byte AttackModifider;
+    public byte DefenseModifider;
+    public byte SpeedModifider;
+    public byte SpecialModifider;
+    public byte AccuracyModifider;
+    public byte EvasionModifider;
 
     public int SleepCounter { get { return Status & 7; } }
     public bool Asleep { get { return SleepCounter > 0; } }
@@ -86,6 +92,12 @@ public class RbyPokemon {
         Defense = UnmodifiedDefense;
         Speed = UnmodifiedSpeed;
         Special = UnmodifiedSpecial;
+        AttackModifider = 7;
+        DefenseModifider = 7;
+        SpeedModifider = 7;
+        SpecialModifider = 7;
+        AccuracyModifider = 7;
+        EvasionModifider = 7;
     }
 
     public void CalculateUnmodifiedStats() {

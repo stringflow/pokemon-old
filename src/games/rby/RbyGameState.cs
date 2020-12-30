@@ -3,11 +3,11 @@ using System;
 public partial class Rby {
 
     public RbyPokemon BattleMon {
-        get { return ReadBattleStruct(From("wBattleMon"), From("wPlayerBattleStatus1"), "wPlayerMonUnmodified"); }
+        get { return ReadBattleStruct(From("wBattleMon"), From("wPlayerBattleStatus1"), From("wPlayerMonStatMods"), "wPlayerMonUnmodified"); }
     }
 
     public RbyPokemon EnemyMon {
-        get { return ReadBattleStruct(From("wEnemyMon"), From("wEnemyBattleStatus1"), "wEnemyMonUnmodified"); }
+        get { return ReadBattleStruct(From("wEnemyMon"), From("wEnemyBattleStatus1"), From("wEnemyMonStatMods"), "wEnemyMonUnmodified"); }
     }
 
     public RbyPokemon PartyMon1 {
@@ -42,7 +42,7 @@ public partial class Rby {
         return ReadPartyStruct(From(SYM["wBoxMons"] + index * (SYM["wBoxMon2"] - SYM["wBoxMon1"])));
     }
 
-    private RbyPokemon ReadBattleStruct(RAMStream data, RAMStream battleStatus, string unmodifiedStatsLabel) {
+    private RbyPokemon ReadBattleStruct(RAMStream data, RAMStream battleStatus, RAMStream modifier, string unmodifiedStatsLabel) {
         RbyPokemon mon = new RbyPokemon();
         mon.Species = Species[data.u8()];
         mon.HP = data.u16be();
@@ -61,6 +61,12 @@ public partial class Rby {
         mon.BattleStatus1 = battleStatus.u8();
         mon.BattleStatus2 = battleStatus.u8();
         mon.BattleStatus3 = battleStatus.u8();
+        mon.AttackModifider = modifier.u8();
+        mon.DefenseModifider = modifier.u8();
+        mon.SpeedModifider = modifier.u8();
+        mon.SpecialModifider = modifier.u8();
+        mon.AccuracyModifider = modifier.u8();
+        mon.EvasionModifider = modifier.u8();
         mon.UnmodifiedMaxHP = CpuReadBE<ushort>(unmodifiedStatsLabel + "MaxHP");
         mon.UnmodifiedAttack = CpuReadBE<ushort>(unmodifiedStatsLabel + "Attack");
         mon.UnmodifiedDefense = CpuReadBE<ushort>(unmodifiedStatsLabel + "Defense");

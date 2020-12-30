@@ -116,6 +116,7 @@ public partial class Rby {
 
             if(cameFrom == textAddrs[0]) {
                 // If the call originated from 'PrintLetterDelay', advance a frame with the specified button to hold.
+                Inject(hold);
                 AdvanceFrame(hold);
             } else {
                 // If the call did not originate from 'PrintLetterDelay', advance the textbox with the opposite button used in the previous frame.
