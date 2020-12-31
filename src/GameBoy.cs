@@ -216,11 +216,6 @@ public partial class GameBoy : IDisposable {
         throw new NotImplementedException();
     }
 
-    // Same concept as above, but generation 2 games read a different hardware register when processing inputs in a menu for some reason.
-    public virtual void InjectMenu(Joypad joypad) {
-        throw new NotImplementedException();
-    }
-
     // Wrapper for advancing to joypad polling and injecting an input
     public virtual void Press(params Joypad[] joypads) {
         throw new NotImplementedException();

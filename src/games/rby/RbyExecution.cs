@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 public partial class Rby {
@@ -38,9 +39,8 @@ public partial class Rby {
                             return ret;
                         }
 
-                        ret = SYM["JoypadOverworld"];
-                        RunUntil(SYM["JoypadOverworld"], SYM["EnterMap"] + 0x10);
-                    } while((CpuRead("wd736") & 0x42) != 0);
+                        ret = RunUntil("JoypadOverworld");
+                    } while((CpuRead("wd736") & 0x42) != 0 && CpuRead("wJoyIgnore") < 0xfc);
                     break;
                 case Action.A:
                     Inject(Joypad.A);
@@ -75,15 +75,21 @@ public partial class Rby {
         RunUntil("JoypadOverworld");
     }
 
-    public void ClearText(Joypad hold = Joypad.None) {
+    public void ClearText(bool holdDuringText, params Joypad[] menuJoypads) {
         int[] textAddrs = {
             SYM["PrintLetterDelay.checkButtons"] + 0x3,
             SYM["WaitForTextScrollButtonPress.skipAnimation"] + 0xa,
             SYM["HoldTextDisplayOpen"] + 0x3,
             (SYM["ShowPokedexDataInternal.waitForButtonPress"] & 0xffff) + 0x3,
         };
+
         int cameFrom;
         int stackPointer;
+
+        int menuJoypadsIndex = 0;
+        Joypad hold = Joypad.None;
+        if(holdDuringText) hold = menuJoypads.Length > 0 ? menuJoypads[menuJoypadsIndex] ^ (Joypad) 0x3 : Joypad.B;
+
         while(true) {
             // Hold the specified input until the joypad state is polled.
             Hold(hold, "Joypad");
@@ -102,12 +108,17 @@ public partial class Rby {
             // If the call did not originate from any of the text handling routines, it may be time to break out of the loop.
             if(Array.IndexOf(textAddrs, cameFrom) == -1) {
                 // If the call originated from 'JoypadOverworld', additional criteria have to be met to warrent a break.
-                // (1) More Buttons than just A and B have to be allowed,
-                // (2) No sprite can currently be moved by a script, 
-                // (3) Joypad input must not be ignored,
-                // (4) Joypad states can not be simulated (player is in a cutscene)
-                if(cameFrom != SYM["JoypadOverworld"] + 0xd || (CpuRead("wJoyIgnore") < 0xfc &&
-                                                                (CpuRead("wd730") & 0xa1) == 0)) {
+                if(cameFrom == SYM["JoypadOverworld"] + 0xd && (CpuRead("wJoyIgnore") > 0xfb ||    // (1) More Buttons than just A and B have to be allowed,
+                                                                (CpuRead("wd730") & 0xa1) > 0)) {  // (2) No sprite can currently be moved by a script, 
+                                                                                                   // (3) Joypad input must not be ignored,
+                                                                                                   // (4) Joypad states can not be simulated (player is in a cutscene)
+                    AdvanceFrame();
+                } else if(menuJoypadsIndex < menuJoypads.Length) {
+                    Inject(menuJoypads[menuJoypadsIndex]);
+                    AdvanceFrame(menuJoypads[menuJoypadsIndex]);
+                    menuJoypadsIndex++;
+                    if(menuJoypadsIndex != menuJoypads.Length) hold = menuJoypads[menuJoypadsIndex] ^ (Joypad) 0x3;
+                } else {
                     // If it is time to break out of the loop, run for 1 sample to allow for continuous calls of this function.
                     RunFor(1);
                     break;
@@ -129,6 +140,23 @@ public partial class Rby {
                 AdvanceFrame(advance);
             }
         }
+    }
+
+    public void WalkTo(int targetX, int targetY) {
+        RbyMap map = Map;
+        RbyTile current = map[XCoord, YCoord];
+        RbyTile target = map[targetX, targetY];
+        RbyWarp warp = map.Warps[XCoord, YCoord];
+        bool original = false;
+        if(warp != null) {
+            original = warp.Allowed;
+            warp.Allowed = true;
+        }
+        List<Action> path = Pathfinding.FindPath(map, current, 17, map.Tileset.LandPermissions, target);
+        if(warp != null) {
+            warp.Allowed = original;
+        }
+        Execute(path.ToArray());
     }
 
     public void UseMove(int slot) {

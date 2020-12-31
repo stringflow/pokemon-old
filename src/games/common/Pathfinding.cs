@@ -13,9 +13,9 @@ public static class Pathfinding {
         // Each tile is given a value representing the distance from destination. (also called the tile's 'cost')
         // Meaning the goal tile is 0, the four tiles around it have the value 17, their neighbors have the value 34, etc.
         // The goal tiles are the starting points for this implementation of the  algorithm. (It kind of searches in reverse)
-        foreach(T destionation in destinations) {
-            costs[destionation] = 0;
-            tilesToCheck.Enqueue(destionation);
+        foreach(T destination in destinations) {
+            costs[destination] = 0;
+            tilesToCheck.Enqueue(destination);
         }
 
         // While there are tiles to check in the queue.
@@ -82,6 +82,7 @@ public static class Pathfinding {
             foreach((Action Action, int Cost) edge in edges[tile]) {
                 if((avaiableActions & edge.Action) > 0) {
                     T dest = tile.Destination(edge.Action);
+                    dest = dest.WarpCheck();
                     tile.AddEdge(edgeSet, new Edge<T> {
                         Action = edge.Action,
                         NextTile = dest,

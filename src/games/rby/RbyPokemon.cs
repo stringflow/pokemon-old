@@ -58,7 +58,7 @@ public class RbyPokemon {
     public bool XAccuracyEffect { get { return (BattleStatus2 & 0x01) > 0; } }
     public bool ProtectedByMist { get { return (BattleStatus2 & 0x02) > 0; } }
     public bool FocusEnergyEffect { get { return (BattleStatus2 & 0x04) > 0; } }
-    public bool Substitude { get { return (BattleStatus2 & 0x10) > 0; } }
+    public bool SubstituteActive { get { return (BattleStatus2 & 0x10) > 0; } }
     public bool Recharging { get { return (BattleStatus2 & 0x20) > 0; } }
     public bool UsingRage { get { return (BattleStatus2 & 0x40) > 0; } }
     public bool Seeded { get { return (BattleStatus2 & 0x80) > 0; } }
@@ -106,6 +106,12 @@ public class RbyPokemon {
         UnmodifiedDefense = CalculateStat(DVs.Defense, Species.BaseDefense, DefenseExp, 5);
         UnmodifiedSpeed = CalculateStat(DVs.Speed, Species.BaseSpeed, SpeedExp, 5);
         UnmodifiedSpecial = CalculateStat(DVs.Special, Species.BaseSpecial, SpecialExp, 5);
+        if(MaxHP == 0) MaxHP = UnmodifiedMaxHP;
+        if(HP == 0) HP = UnmodifiedMaxHP;
+        if(Attack == 0) Attack = UnmodifiedAttack;
+        if(Defense == 0) Defense = UnmodifiedDefense;
+        if(Speed == 0) Speed = UnmodifiedSpeed;
+        if(Special == 0) Special = UnmodifiedSpecial;
     }
 
     private ushort CalculateStat(byte dv, byte baseStat, ushort exp, int constant) {

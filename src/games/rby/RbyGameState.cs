@@ -42,13 +42,51 @@ public partial class Rby {
         return ReadPartyStruct(From(SYM["wBoxMons"] + index * (SYM["wBoxMon2"] - SYM["wBoxMon1"])));
     }
 
+    public RbyMap Map {
+        get { return Maps[CpuRead("wCurMap")]; }
+    }
+
+    public RbyTile Tile {
+        get { return Map[XCoord, YCoord]; }
+    }
+
+    public byte XCoord {
+        get { return CpuRead("wXCoord"); }
+    }
+
+    public byte YCoord {
+        get { return CpuRead("wYCoord"); }
+    }
+
+    public byte XBlockCoord {
+        get { return CpuRead("wXBlockCoord"); }
+    }
+
+    public byte YBlockCoord {
+        get { return CpuRead("wYBlockCoord"); }
+    }
+
+    public RbyBag Bag {
+        get {
+            RbyBag bag = new RbyBag();
+            bag.Game = this;
+            bag.NumItems = CpuRead("wNumBagItems");
+            bag.Items = new RbyItemStack[bag.NumItems];
+            RAMStream data = From("wBagItems");
+            for(int i = 0; i < bag.Items.Length; i++) {
+                bag.Items[i] = new RbyItemStack(Items[data.u8()], data.u8());
+            }
+            return bag;
+        }
+    }
+
     private RbyPokemon ReadBattleStruct(RAMStream data, RAMStream battleStatus, RAMStream modifier, string unmodifiedStatsLabel) {
         RbyPokemon mon = new RbyPokemon();
         mon.Species = Species[data.u8()];
         mon.HP = data.u16be();
-        data.Seek(1);
+        data.Seek(1); // party pos
         mon.Status = data.u8();
-        data.Seek(3);
+        data.Seek(3); // type and catch rate (for transform, but unimportant to us right now)
         mon.Moves = Array.ConvertAll(data.Read(4), m => Moves[m]);
         mon.DVs = data.u16be();
         mon.Level = data.u8();
@@ -92,6 +130,7 @@ public partial class Rby {
         mon.SpecialExp = data.u16be();
         mon.DVs = data.u16be();
         mon.PP = data.Read(4);
+        mon.CalculateUnmodifiedStats();
         return mon;
     }
 
@@ -103,45 +142,6 @@ public partial class Rby {
         mon.Defense = data.u16be();
         mon.Speed = data.u16be();
         mon.Special = data.u16be();
-        mon.CalculateUnmodifiedStats();
         return mon;
-    }
-
-    public RbyMap Map {
-        get { return Maps[CpuRead("wCurMap")]; }
-    }
-
-    public RbyTile Tile {
-        get { return Map[XCoord, YCoord]; }
-    }
-
-    public byte XCoord {
-        get { return CpuRead("wXCoord"); }
-    }
-
-    public byte YCoord {
-        get { return CpuRead("wYCoord"); }
-    }
-
-    public byte XBlockCoord {
-        get { return CpuRead("wXBlockCoord"); }
-    }
-
-    public byte YBlockCoord {
-        get { return CpuRead("wYBlockCoord"); }
-    }
-
-    public RbyBag Bag {
-        get {
-            RbyBag bag = new RbyBag();
-            bag.Game = this;
-            bag.NumItems = CpuRead("wNumBagItems");
-            bag.Items = new RbyItemStack[bag.NumItems];
-            RAMStream data = From("wBagItems");
-            for(int i = 0; i < bag.Items.Length; i++) {
-                bag.Items[i] = new RbyItemStack(Items[data.u8()], data.u8());
-            }
-            return bag;
-        }
     }
 }

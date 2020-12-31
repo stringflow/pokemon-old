@@ -137,14 +137,6 @@ public partial class Gsc : GameBoy {
         }
     }
 
-    public int WalkTo(int targetX, int targetY) {
-        GscMap map = Maps[CpuRead("wMapGroup") << 8 | CpuRead("wMapNumber")];
-        GscTile current = map[CpuRead("wXCoord"), CpuRead("wYCoord")];
-        GscTile target = map[targetX, targetY];
-        List<Action> path = Pathfinding.FindPath(map, current, 17, map.Tileset.LandPermissions, target); // TODO: Bike check
-        return Execute(path.ToArray());
-    }
-
     public override Font ReadFont() {
         const int numCols = 16;
         byte[] gfx = ROM.Subarray("Font", 16 * 8 * 8);

@@ -57,7 +57,6 @@ public abstract class Tile<T> where T : Tile<T> {
         T neighbor = Neighbor(action);
         if(neighbor != null) {
             if(IsLedgeHop(neighbor, action)) neighbor = neighbor.Neighbor(action);
-            neighbor = neighbor.WarpCheck();
         }
         return neighbor;
     }
