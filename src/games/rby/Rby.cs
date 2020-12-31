@@ -259,7 +259,7 @@ public partial class Rby : GameBoy {
             int yTile = i / bitmap.Width * 8;
             for(int j = 0; j < 8; j++) {
                 byte col = (byte) ((gfx[i] >> (7 - j) & 1) * 0xff);
-                bitmap.SetPixel(xTile + j, yTile + i & 7, col, col, col, col);
+                bitmap.SetPixel(xTile + j, yTile + (i & 7), col, col, col, col);
             }
         }
 
