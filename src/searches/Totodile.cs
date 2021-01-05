@@ -56,19 +56,19 @@ public static class Totodile {
             gb.AdvanceFrame(Joypad.B);
             gb.Hold(Joypad.A, "PromptButton");
             gb.Hold(Joypad.A, "GetJoypad");
-            gb.InjectMenu(Joypad.A | Joypad.B);
+            gb.Inject(Joypad.A | Joypad.B);
             gb.Hold(Joypad.B, "YesNoBox");
             gb.Hold(Joypad.B, "GetJoypad");
-            gb.InjectMenu(Joypad.A);
+            gb.Inject(Joypad.A);
             gb.Hold(Joypad.B, "PromptButton");
             gb.Hold(Joypad.B, "GetJoypad");
-            gb.InjectMenu(Joypad.A | Joypad.B);
+            gb.Inject(Joypad.A | Joypad.B);
             gb.Hold(Joypad.B, "PromptButton");
             gb.Hold(Joypad.B, "GetJoypad");
-            gb.InjectMenu(Joypad.A | Joypad.B);
+            gb.Inject(Joypad.A | Joypad.B);
             gb.Hold(Joypad.B, "PromptButton");
             gb.Hold(Joypad.B, "GetJoypad");
-            gb.InjectMenu(Joypad.A | Joypad.B);
+            gb.Inject(Joypad.A | Joypad.B);
             gb.Hold(Joypad.A | Joypad.B, "CalcMonStats");
             int dvs = gb.CpuRead("wPartyMon1DVs") << 8 | gb.CpuRead(gb.SYM["wPartyMon1DVs"] + 1);
 
@@ -142,10 +142,10 @@ public static class Totodile {
         }
     }
 
-    public static void Test(byte x, byte y, byte hour, byte minute, byte momStep, byte audio, byte frameType, byte menuAccount, byte igt, int fsback, int delay, string path) {
+    public static void Test(byte x, byte y, byte hour, byte minute, byte momStep, byte audio, byte frameType, byte menuAccount, byte igt, int fsback, int delay, string path, string recordName = "") {
         MakeSave(x, y, hour, minute, momStep, audio, frameType, menuAccount, igt);
-        Gsc gb = new Gsc("roms/pokegold.gbc");
-        gb.SetSpeedupFlags(SpeedupFlags.NoSound | SpeedupFlags.NoVideo);
+        Gold gb = new Gold(true);
+        if(recordName != "") gb.Record(recordName);
         gb.Hold(Joypad.Start, 0x100);
         byte[] timesecState = gb.SaveState();
         timesecState[gb.SaveStateLabels["timesec"] + 0] = 0;
@@ -153,20 +153,13 @@ public static class Totodile {
         timesecState[gb.SaveStateLabels["timesec"] + 2] = 0;
         timesecState[gb.SaveStateLabels["timesec"] + 3] = 120;
         gb.LoadState(timesecState);
-        gb.Hold(Joypad.Start, "GetJoypad");
-        gb.AdvanceFrame(Joypad.Start);
-        gb.Hold(Joypad.Start, "GetJoypad");
-        gb.AdvanceFrame(Joypad.Start);
-        gb.Hold(Joypad.A, "GetJoypad");
-        gb.AdvanceFrame(Joypad.A);
-        for(int i = 0; i < fsback; i++) {
-            gb.Hold(Joypad.B, "GetJoypad");
-            gb.AdvanceFrame(Joypad.B);
-            gb.Hold(Joypad.A, "GetJoypad");
-            gb.AdvanceFrame(Joypad.A);
-        }
         gb.Hold(Joypad.Left, "GetJoypad");
-        gb.AdvanceFrame(Joypad.Left);
+        gb.Press(Joypad.Start, Joypad.Start, Joypad.A);
+        Console.WriteLine(gb.CpuRead("hRandomAdd"));
+        for(int i = 0; i < fsback; i++) {
+            gb.Press(Joypad.B, Joypad.A);
+        }
+        gb.Press(Joypad.Left);
         for(int i = 0; i < delay; i++) {
             gb.AdvanceFrame(Joypad.Left);
         }
@@ -175,28 +168,29 @@ public static class Totodile {
         gb.AdvanceFrame(Joypad.A);
         gb.Hold(Joypad.A, "OWPlayerInput");
         gb.Execute(path);
-        gb.Inject(Joypad.A);
+        gb.InjectOverworld(Joypad.A);
         gb.AdvanceFrame(Joypad.A);
         gb.Hold(Joypad.B, "GetJoypad");
         gb.AdvanceFrame(Joypad.B);
         gb.Hold(Joypad.A, "PromptButton");
         gb.Hold(Joypad.A, "GetJoypad");
-        gb.InjectMenu(Joypad.A | Joypad.B);
+        gb.Inject(Joypad.A | Joypad.B);
         gb.Hold(Joypad.B, "YesNoBox");
         gb.Hold(Joypad.B, "GetJoypad");
-        gb.InjectMenu(Joypad.A);
+        gb.Inject(Joypad.A);
         gb.Hold(Joypad.B, "PromptButton");
         gb.Hold(Joypad.B, "GetJoypad");
-        gb.InjectMenu(Joypad.A | Joypad.B);
+        gb.Inject(Joypad.A | Joypad.B);
         gb.Hold(Joypad.B, "PromptButton");
         gb.Hold(Joypad.B, "GetJoypad");
-        gb.InjectMenu(Joypad.A | Joypad.B);
+        gb.Inject(Joypad.A | Joypad.B);
         gb.Hold(Joypad.B, "PromptButton");
         gb.Hold(Joypad.B, "GetJoypad");
-        gb.InjectMenu(Joypad.A | Joypad.B);
+        gb.Inject(Joypad.A | Joypad.B);
         gb.Hold(Joypad.A | Joypad.B, "CalcMonStats");
         int dvs = gb.CpuRead("wPartyMon1DVs") << 8 | gb.CpuRead(gb.SYM["wPartyMon1DVs"] + 1);
-        Console.Write("0x{0:x4}", dvs);
+        Console.WriteLine("0x{0:x4}", dvs);
+        File.WriteAllBytes("post_toto.gqs", gb.SaveState());
         gb.Dispose();
     }
 
@@ -233,7 +227,6 @@ public static class Totodile {
         byte[] audios = { 0xc1, 0xe1 };
 
         int numSavesCompleted = 0;
-        int savesToSkip = 832 - 66;
 
         Writer = new StreamWriter("gold_toto_" + DateTime.Now.Ticks + ".txt");
         int numSaves = startTiles.Length * startHours.Length * startMinutes.Length * 2 * 2 * 8 * 2 * 10;
@@ -246,11 +239,6 @@ public static class Totodile {
                             for(byte frameType = 0; frameType <= 7; frameType++) {
                                 for(byte menuAccount = 0; menuAccount <= 1; menuAccount++) {
                                     for(byte igt = 0; igt < 60; igt += 6) {
-                                        if(numSavesCompleted < savesToSkip) {
-                                            numSavesCompleted++;
-                                            Console.WriteLine("Skipping save " + numSavesCompleted);
-                                            continue;
-                                        }
                                         int threadIndex;
                                         while((threadIndex = Array.IndexOf(threadsRunning, false)) == -1) {
                                             Thread.Sleep(50);

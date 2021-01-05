@@ -75,7 +75,7 @@ public partial class Rby {
         RunUntil("JoypadOverworld");
     }
 
-    public void ClearText(bool holdDuringText, params Joypad[] menuJoypads) {
+    public override void ClearText(bool holdDuringText, params Joypad[] menuJoypads) {
         int[] textAddrs = {
             SYM["PrintLetterDelay.checkButtons"] + 0x3,
             SYM["WaitForTextScrollButtonPress.skipAnimation"] + 0xa,
@@ -94,7 +94,7 @@ public partial class Rby {
             // Hold the specified input until the joypad state is polled.
             Hold(hold, "Joypad");
             // Read the current position of the stack.
-            stackPointer = GetRegisters().SP;
+            stackPointer = Registers.SP;
             // When the 'Joypad' routine is called, the address of the following instruction is pushed onto the stack.
             // By reading the 2 highest bytes from the stack, it is possible to figure out from where the 'Joypad' call originated.
             // This will be used to make decisions later on.
@@ -117,7 +117,7 @@ public partial class Rby {
                     Inject(menuJoypads[menuJoypadsIndex]);
                     AdvanceFrame(menuJoypads[menuJoypadsIndex]);
                     menuJoypadsIndex++;
-                    if(menuJoypadsIndex != menuJoypads.Length) hold = menuJoypads[menuJoypadsIndex] ^ (Joypad) 0x3;
+                    if(holdDuringText && menuJoypadsIndex != menuJoypads.Length) hold = menuJoypads[menuJoypadsIndex] ^ (Joypad) 0x3;
                 } else {
                     // If it is time to break out of the loop, run for 1 sample to allow for continuous calls of this function.
                     RunFor(1);
@@ -142,7 +142,7 @@ public partial class Rby {
         }
     }
 
-    public void WalkTo(int targetX, int targetY) {
+    public override int WalkTo(int targetX, int targetY) {
         RbyMap map = Map;
         RbyTile current = map[XCoord, YCoord];
         RbyTile target = map[targetX, targetY];
@@ -156,7 +156,7 @@ public partial class Rby {
         if(warp != null) {
             warp.Allowed = original;
         }
-        Execute(path.ToArray());
+        return Execute(path.ToArray());
     }
 
     public void UseMove(int slot) {

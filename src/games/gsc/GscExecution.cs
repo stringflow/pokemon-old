@@ -1,27 +1,25 @@
-using System;
+using System.Threading;
 using System.Collections.Generic;
 using System.Linq;
 
 public partial class Gsc {
 
     public override void Press(params Joypad[] joypads) {
-        foreach(Joypad joypad in joypads) {
-            RunUntil("GetJoypad");
-            Inject(joypad);
-            AdvanceFrame();
+        for(int i = 0; i < joypads.Length; i++) {
+            Joypad joypad = joypads[i];
+            if(Registers.PC == (SYM["OWPlayerInput"] & 0xffff)) {
+                InjectOverworld(joypad);
+                Hold(joypad, "GetJoypad");
+            } else {
+                Hold(joypad, "GetJoypad");
+                Inject(joypad);
+                AdvanceFrame(joypad);
+            }
         }
     }
 
     public override void Inject(Joypad joypad) {
         CpuWrite("hJoypadDown", (byte) joypad);
-    }
-
-    public void PressOverworld(params Joypad[] joypads) {
-        foreach(Joypad joypad in joypads) {
-            RunUntil("OWPlayerInput");
-            InjectOverworld(joypad);
-            AdvanceFrame();
-        }
     }
 
     public void InjectOverworld(Joypad joypad) {
@@ -38,10 +36,16 @@ public partial class Gsc {
                 case Action.Up:
                 case Action.Down:
                     Joypad input = (Joypad) action;
+                    RunUntil("OWPlayerInput");
                     InjectOverworld(input);
                     ret = Hold(input, "CountStep", "ChooseWildEncounter.startwildbattle", "PrintLetterDelay", "DoPlayerMovement.BumpSound");
-                    if(ret == SYM["CountStep"] || ret == SYM["DoPlayerMovement.BumpSound"]) {
+                    if(ret == SYM["CountStep"]) {
                         ret = Hold(input, "OWPlayerInput", "ChooseWildEncounter.startwildbattle");
+                        if(ret != SYM["OWPlayerInput"]) {
+                            return ret;
+                        }
+                    } else {
+                        return ret;
                     }
                     InjectOverworld(Joypad.None);
                     break;
@@ -60,7 +64,7 @@ public partial class Gsc {
         return ret;
     }
 
-    public void ClearText(bool holdDuringText, params Joypad[] menuJoypads) {
+    public override void ClearText(bool holdDuringText, params Joypad[] menuJoypads) {
         // A list of routines that prompt the user to advance the text with either A or B.
         int[] textAdvanceAddrs = {
             SYM["PromptButton.input_wait_loop"] + 0x6,
@@ -80,7 +84,7 @@ public partial class Gsc {
             Hold(hold, "GetJoypad");
 
             // Read the current position of the stack.
-            stackPointer = GetRegisters().SP;
+            stackPointer = Registers.SP;
 
             // Every time a routine gets called, the address of the following instruction gets pushed on the stack (to then be jumped to once the routine call returns).
             // To figure out where the 'GetJoypad' call originated from, we use the top two addresses of the stack.
@@ -110,7 +114,7 @@ public partial class Gsc {
                     Inject(menuJoypads[menuJoypadsIndex]);
                     AdvanceFrame(menuJoypads[menuJoypadsIndex]);
                     menuJoypadsIndex++;
-                    if(menuJoypadsIndex != menuJoypads.Length) hold = menuJoypads[menuJoypadsIndex] ^ (Joypad) 0x3;
+                    if(holdDuringText && menuJoypadsIndex != menuJoypads.Length) hold = menuJoypads[menuJoypadsIndex] ^ (Joypad) 0x3;
                 } else {
                     break;
                 }
@@ -118,7 +122,7 @@ public partial class Gsc {
         }
     }
 
-    public int WalkTo(int targetX, int targetY) {
+    public override int WalkTo(int targetX, int targetY) {
         GscMap map = Map;
         GscTile current = Tile;
         GscTile target = map[targetX, targetY];
@@ -133,5 +137,52 @@ public partial class Gsc {
             warp.Allowed = original;
         }
         return Execute(path.ToArray());
+    }
+
+    public void SetTimeSec(int timesec) {
+        byte[] state = SaveState();
+        state[SaveStateLabels["timesec"] + 0] = (byte) (timesec >> 24);
+        state[SaveStateLabels["timesec"] + 1] = (byte) (timesec >> 16);
+        state[SaveStateLabels["timesec"] + 2] = (byte) (timesec >> 8);
+        state[SaveStateLabels["timesec"] + 3] = (byte) (timesec & 0xff);
+        LoadState(state);
+    }
+
+    public byte[][] MakeIGTStates(int timesec, GscIntroSequence intro, int numIgts) {
+        SetTimeSec(timesec);
+        intro.ExecuteUntilIGT(this);
+        byte[] igtState = SaveState();
+        byte[][] owStates = new byte[numIgts][];
+        for(int i = 0; i < numIgts; i++) {
+            LoadState(igtState);
+            CpuWrite("wGameTimeSeconds", (byte) (i / 60));
+            CpuWrite("wGameTimeFrames", (byte) (i % 60));
+            intro.ExecuteAfterIGT(this);
+            owStates[i] = SaveState();
+        }
+        return owStates;
+    }
+
+    public static string CleanUpPath<Gb>(Gb[] gbs, byte[][] states, int ss, Action[] path) where Gb : GameBoy {
+        List<int> aPressIndices = new List<int>();
+        for(int i = 0; i < path.Length; i++) {
+            if((path[i] & Action.A) > 0) aPressIndices.Add(i);
+        }
+
+        foreach(int index in aPressIndices) {
+            path[index] &= ~Action.A;
+            int successes = states.Length;
+            MultiThread.For(states.Length, gbs, (gb, igt) => {
+                gb.LoadState(states[igt]);
+                if(gb.Execute(path) != gb.SYM["OWPlayerInput"]) {
+                    Interlocked.Decrement(ref successes);
+                }
+            });
+            if(successes < ss) {
+                path[index] |= Action.A;
+            }
+        }
+
+        return ActionFunctions.ActionsToPath(path);
     }
 }

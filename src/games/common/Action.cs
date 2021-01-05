@@ -1,3 +1,5 @@
+using System;
+
 public enum Action {
 
     None = 0,
@@ -47,5 +49,13 @@ public static class ActionFunctions {
             case Action.Down: return Action.Up;
             default: return action;
         }
+    }
+
+    public static Action[] PathToActions(string path) {
+        return Array.ConvertAll(path.Split(" "), e => e.ToAction());
+    }
+
+    public static string ActionsToPath(Action[] actions) {
+        return string.Join(" ", Array.ConvertAll(actions, e => e.LogString()));
     }
 }

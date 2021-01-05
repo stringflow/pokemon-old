@@ -5,10 +5,10 @@ public class GoldSilver : Gsc {
 
 public class Gold : GoldSilver {
 
-    public Gold(bool speedup = false, string rom = "roms/pokegold.gbc") : base(rom, speedup) { }
+    public Gold(bool speedup = false) : base("roms/pokegold.gbc", speedup) { }
 }
 
 public class Silver : GoldSilver {
 
-    public Silver(bool speedup = false, string rom = "roms/pokesilver.gbc") : base(rom, speedup) { }
+    public Silver(bool speedup = false) : base("roms/pokesilver.gbc", speedup) { }
 }

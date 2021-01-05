@@ -73,6 +73,14 @@ public partial class GameBoy : IDisposable {
         get { return Libgambatte.gambatte_timenow(Handle); }
     }
 
+    // Get Reg and flag values.
+    public Registers Registers {
+        get {
+            Libgambatte.gambatte_getregs(Handle, out Registers regs);
+            return regs;
+        }
+    }
+
     public GameBoy(string biosFile, string romFile, SpeedupFlags speedupFlags = SpeedupFlags.None) {
         ROM = new ROM(romFile);
         Debug.Assert(ROM.HeaderChecksumMatches(), "Cartridge header checksum mismatch!");
@@ -177,11 +185,6 @@ public partial class GameBoy : IDisposable {
         return Libgambatte.gambatte_cpuread(Handle, (ushort) addr);
     }
 
-    // Get reg and flag values.
-    public Registers GetRegisters() {
-        Libgambatte.gambatte_getregs(Handle, out Registers regs);
-        return regs;
-    }
 
     // Returns the emulator state as a buffer.
     public byte[] SaveState() {
@@ -210,37 +213,6 @@ public partial class GameBoy : IDisposable {
         Libgambatte.gambatte_setspeedupflags(Handle, flags);
     }
 
-    // Injects an input by overwriting the hardware register.
-    // Only useful after the GameBoy polled the joypad status but before the inputs are processed.
-    public virtual void Inject(Joypad joypad) {
-        throw new NotImplementedException();
-    }
-
-    // Wrapper for advancing to joypad polling and injecting an input
-    public virtual void Press(params Joypad[] joypads) {
-        throw new NotImplementedException();
-    }
-
-    // Executes the specified actions and returns the last hit breakpoint.
-    public virtual int Execute(params Action[] actions) {
-        throw new NotImplementedException();
-    }
-
-    // Executes the specified button presses while respecting consecutive input lag.
-    public void MenuPress(params Joypad[] joypads) {
-        foreach(Joypad joypad in joypads) {
-            if(CpuRead("hJoyLast") == (byte) joypad) {
-                Press(Joypad.None);
-            }
-            Press(joypad);
-        }
-    }
-
-    // Helper function that executes the specified string path.
-    public int Execute(string path) {
-        return Execute(Array.ConvertAll(path.Split(" "), e => e.ToAction()));
-    }
-
     // Helper functions that translate SYM labels to their respective addresses.
     public int RunUntil(params string[] addrs) {
         return RunUntil(Array.ConvertAll(addrs, e => SYM[e]));
@@ -262,17 +234,14 @@ public partial class GameBoy : IDisposable {
     public void Show() {
         Scene s = new Scene(this, 160, 144);
         s.AddComponent(new VideoBufferComponent(0, 0, 160, 144));
+        SetSpeedupFlags(SpeedupFlags.NoSound);
     }
 
     // Helper function that creates a basic scene graph with a video buffer component and a record component.
     public void Record(string movie) {
         Show();
+        SetSpeedupFlags(SpeedupFlags.None);
         Scene.AddComponent(new RecordingComponent(movie));
-    }
-
-    // Reads the game's font from the ROM. Each game overrides this function and implements it in its own way.
-    public virtual Font ReadFont() {
-        return null;
     }
 
     public void PlayBizhawkMovie(string bk2File) {

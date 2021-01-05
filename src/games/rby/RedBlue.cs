@@ -256,7 +256,7 @@ public class RedBlue : Rby {
 
 public class Red : RedBlue {
 
-    public Red(bool speedup = false, string rom = "roms/pokered.gbc") : base(rom, speedup) { }
+    public Red(bool speedup = false) : base("roms/pokered.gbc", speedup) { }
 
     public override byte[][] BGPalette() {
         return new byte[][] {
@@ -277,7 +277,7 @@ public class Red : RedBlue {
 
 public class Blue : RedBlue {
 
-    public Blue(bool speedup = false, string rom = "roms/pokeblue.gbc") : base(rom, speedup) { }
+    public Blue(bool speedup = false) : base("roms/pokeblue.gbc", speedup) { }
 
     public override byte[][] BGPalette() {
         return new byte[][] {
