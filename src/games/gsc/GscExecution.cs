@@ -163,7 +163,7 @@ public partial class Gsc {
         return owStates;
     }
 
-    public static string CleanUpPath<Gb>(Gb[] gbs, byte[][] states, int ss, Action[] path) where Gb : GameBoy {
+    public static string CleanUpPathParallel<Gb>(Gb[] gbs, byte[][] states, int ss, Action[] path) where Gb : GameBoy {
         List<int> aPressIndices = new List<int>();
         for(int i = 0; i < path.Length; i++) {
             if((path[i] & Action.A) > 0) aPressIndices.Add(i);
