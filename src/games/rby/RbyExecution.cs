@@ -81,6 +81,7 @@ public partial class Rby {
             SYM["WaitForTextScrollButtonPress.skipAnimation"] + 0xa,
             SYM["HoldTextDisplayOpen"] + 0x3,
             (SYM["ShowPokedexDataInternal.waitForButtonPress"] & 0xffff) + 0x3,
+            SYM["TextCommand_PAUSE"] + 0x4,
         };
 
         int cameFrom;
@@ -109,7 +110,7 @@ public partial class Rby {
             if(Array.IndexOf(textAddrs, cameFrom) == -1) {
                 // If the call originated from 'JoypadOverworld', additional criteria have to be met to warrent a break.
                 if(cameFrom == SYM["JoypadOverworld"] + 0xd && (CpuRead("wJoyIgnore") > 0xfb ||    // (1) More Buttons than just A and B have to be allowed,
-                                                                (CpuRead("wd730") & 0xa1) > 0)) {  // (2) No sprite can currently be moved by a script, 
+                                                                (CpuRead("wd730") & 0xa1) > 0)) {  // (2) No sprite can currently be moved by a script,
                                                                                                    // (3) Joypad input must not be ignored,
                                                                                                    // (4) Joypad states can not be simulated (player is in a cutscene)
                     AdvanceFrame();
