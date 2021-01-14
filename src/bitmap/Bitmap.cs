@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 
 public class Bitmap {
 
@@ -80,15 +81,20 @@ public class Bitmap {
     }
 
     public void Unpack2BPP(byte[] data, byte[][] pal, bool transparent = false) {
+        Unpack2BPP(data, new byte[][][] { pal }, null, transparent);
+    }
+
+    public void Unpack2BPP(byte[] data, byte[][][] pal, byte[] palMap, bool transparent = false) {
         int w = Width / 8;
         for(int i = 0; i < data.Length / 16; i++) {
+            int palMapIndex = palMap == null ? 0 : palMap[i];
             for(int j = 0; j < 8; j++) {
                 byte top = data[i * 16 + j * 2 + 0];
                 byte bot = data[i * 16 + j * 2 + 1];
                 for(int k = 0; k < 8; k++) {
                     int idx = ((i / w) * (w * 8) * 8 + j * (w * 8) + (i % w) * 8 + k) * 4;
                     int palIdx = (byte) (((top >> (7 - k)) & 1) + ((bot >> (7 - k)) & 1) * 2);
-                    byte[] col = pal[palIdx];
+                    byte[] col = pal[palMapIndex][palIdx];
                     Pixels[idx + 0] = col[0];
                     Pixels[idx + 1] = col[1];
                     Pixels[idx + 2] = col[2];

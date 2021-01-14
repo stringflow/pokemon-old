@@ -186,6 +186,24 @@ public class ByteStream : MemoryStream {
         return bytes;
     }
 
+    // Reads 'length' number of ushorts in the little-endian format.
+    public ushort[] ReadU16le(int length) {
+        ushort[] ushorts = new ushort[length];
+        for(int i = 0; i < length; i++) {
+            ushorts[i] = u16le();
+        }
+        return ushorts;
+    }
+
+    // Reads 'length' number of ushorts in the big-endian format.
+    public ushort[] ReadU16be(int length) {
+        ushort[] ushorts = new ushort[length];
+        for(int i = 0; i < length; i++) {
+            ushorts[i] = u16be();
+        }
+        return ushorts;
+    }
+
     // Consumes one nybble (4 bits) worth of data.
     public byte Nybble() {
         byte ret = (byte) (LowerNybble ? u8() & 0xf : Peek() >> 4);

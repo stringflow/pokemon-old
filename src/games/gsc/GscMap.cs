@@ -140,6 +140,7 @@ public class GscMap : Map<GscTile> {
     public int Scripts;
     public int Events;
     public byte ConnectionFlags;
+    public int EnvironmentColorPointer;
     public GscConnection[] Connections;
     public DataList<GscWarp> Warps;
     public DataList<GscCoordEvent> CoordEvents;
@@ -162,6 +163,8 @@ public class GscMap : Map<GscTile> {
 
         Name = game.SYM[Attributes];
         Name = Name.Substring(0, Name.IndexOf("_MapAttributes"));
+
+        EnvironmentColorPointer = game.SYM["EnvironmentColorsPointers"] & 0xff0000 | game.ROM.u16le(game.SYM["EnvironmentColorsPointers"] + Environment * 2);
 
         ByteStream attributesData = game.ROM.From(Attributes);
         BorderBlock = attributesData.u8();
@@ -230,12 +233,18 @@ public class GscMap : Map<GscTile> {
     }
 
     public override Bitmap Render() {
+        return Render(GscPalette.Auto);
+    }
+
+    public Bitmap Render(GscPalette timePalette) {
         byte[] tiles = Tileset.GetTiles(Game.ROM.Subarray(Blocks, Width * Height), Width);
         byte[] decompressed = LZ.Decompress(Game.ROM.From(Tileset.GFX));
 
         byte[] gfx = new byte[0xe00];
-        Array.Copy(decompressed, 0, gfx, 0, 0x600);         // vram bank 1
-        Array.Copy(decompressed, 0x600, gfx, 0x800, 0x600); // vram bank 2
+        Array.Copy(decompressed, 0, gfx, 0, 0x600); // vram bank 1
+        if(decompressed.Length > 0x600) {
+            Array.Copy(decompressed, 0x600, gfx, 0x800, 0x600); // optional vram bank 2
+        }
 
         if(Tileset.Id == 1 || Tileset.Id == 2 || Tileset.Id == 4) {
             // Load map group specific roof tiles.
@@ -245,17 +254,58 @@ public class GscMap : Map<GscTile> {
             }
         }
 
+        int timeOffset = 0;
+        switch(timePalette) {
+            case GscPalette.Morn: timeOffset = 0; break;
+            case GscPalette.Auto: // TODO: Don't always default to day time?
+            case GscPalette.Day: timeOffset = 1; break;
+            case GscPalette.Nite: timeOffset = 2; break;
+            case GscPalette.Dark: timeOffset = 3; break;
+        }
+
+        byte palMapBank;
+        if(Game is Crystal) {
+            palMapBank = 0x13;
+        } else {
+            palMapBank = 0x02;
+        }
+
         byte[] pixels = new byte[tiles.Length * 16];
+        byte[] palMap = new byte[tiles.Length];
+
         for(int i = 0; i < tiles.Length; i++) {
-            Array.Copy(gfx, tiles[i] * 16, pixels, i * 16, 16);
+            byte tile = tiles[i];
+            Array.Copy(gfx, tile * 16, pixels, i * 16, 16);
+
+            int bankOffset = tile > 0x60 ? 0x20 : 0;
+            byte palType = Game.ROM[(palMapBank << 16 | Tileset.PalMap) + (tile + bankOffset) / 2];
+            if((tile & 1) == 0) palType &= 0xf;
+            else palType >>= 4;
+
+            palMap[i] = Game.ROM[EnvironmentColorPointer + timeOffset * 8 + palType];
+        }
+
+        ushort[] bgPalData = Game.ROM.From("TilesetBGPalette").ReadU16le(168);
+        ushort[] roofPalData = Game.ROM.From(Game.SYM["RoofPals"] + Group * 8).ReadU16le(4);
+        Array.Copy(roofPalData, 0, bgPalData, 6 * 4 + 1, 2);
+        Array.Copy(roofPalData, 0, bgPalData, 14 * 4 + 1, 2);
+        Array.Copy(roofPalData, 2, bgPalData, 22 * 4 + 1, 2);
+
+        byte[][][] bgPal = new byte[42][][];
+        for(int i = 0; i < bgPal.Length; i++) {
+            bgPal[i] = new byte[4][];
+            for(int j = 0; j < 4; j++) {
+                bgPal[i][j] = new byte[3];
+
+                ushort val = bgPalData[i * 4 + j];
+                bgPal[i][j][0] = (byte) (((val) & 0x1f) << 3);
+                bgPal[i][j][1] = (byte) (((val >> 5) & 0x1f) << 3);
+                bgPal[i][j][2] = (byte) (((val >> 10) & 0x1f) << 3);
+            }
         }
 
         Bitmap bitmap = new Bitmap(Width * 2 * 2 * 8, Height * 2 * 2 * 8);
-        bitmap.Unpack2BPP(pixels, new byte[][] {
-                                        new byte[] { 232, 232, 232 },
-                                        new byte[] { 160, 160, 160 },
-                                        new byte[] { 88, 88, 88 },
-                                        new byte[] { 16, 16, 16 }});
+        bitmap.Unpack2BPP(pixels, bgPal, palMap);
         return bitmap;
     }
 
