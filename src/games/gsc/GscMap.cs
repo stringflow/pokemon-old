@@ -231,7 +231,19 @@ public class GscMap : Map<GscTile> {
 
     public override Bitmap Render() {
         byte[] tiles = Tileset.GetTiles(Game.ROM.Subarray(Blocks, Width * Height), Width);
-        byte[] gfx = LZ.Decompress(Game.ROM.From(Tileset.GFX));
+        byte[] decompressed = LZ.Decompress(Game.ROM.From(Tileset.GFX));
+
+        byte[] gfx = new byte[0xe00];
+        Array.Copy(decompressed, 0, gfx, 0, 0x600);         // vram bank 1
+        Array.Copy(decompressed, 0x600, gfx, 0x800, 0x600); // vram bank 2
+
+        if(Tileset.Id == 1 || Tileset.Id == 2 || Tileset.Id == 4) {
+            // Load map group specific roof tiles.
+            byte roofIndex = Game.ROM[Game.SYM["MapGroupRoofs"] + Group];
+            if(roofIndex != 0xff) {
+                Array.Copy(Game.ROM.Data, Game.SYM["Roofs"] + roofIndex * 0x90, gfx, 0xa0, 0x90);
+            }
+        }
 
         byte[] pixels = new byte[tiles.Length * 16];
         for(int i = 0; i < tiles.Length; i++) {
