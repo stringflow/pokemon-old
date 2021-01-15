@@ -80,6 +80,35 @@ public class Bitmap {
         }
     }
 
+    public Bitmap SubBitmap(int x, int y, int width, int height) {
+        Bitmap ret = new Bitmap(width, height);
+        SubBitmap(ret, x, y, ret.Width, ret.Height);
+        return ret;
+    }
+
+    public void SubBitmap(Bitmap dest, int x, int y, int subWidth, int subHeight) {
+        for(int xx = 0; xx < subWidth; xx++) {
+            for(int yy = 0; yy < subHeight; yy++) {
+                int xPix = x + xx;
+                int yPix = y + yy;
+                int offs = (xPix + yPix * Width) * 4;
+                byte r = Pixels[offs + 0];
+                byte g = Pixels[offs + 1];
+                byte b = Pixels[offs + 2];
+                byte a = Pixels[offs + 3];
+                dest.SetPixel(xx, yy, r, g, b, a);
+            }
+        }
+    }
+
+    public void FillRect(int x, int y, int width, int height, byte r, byte g, byte b, byte a = 0xff) {
+        for(int xx = 0; xx < width; xx++) {
+            for(int yy = 0; yy < height; yy++) {
+                SetPixel(x + xx, y + yy, r, g, b, a);
+            }
+        }
+    }
+
     public void Unpack2BPP(byte[] data, byte[][] pal, bool transparent = false) {
         Unpack2BPP(data, new byte[][][] { pal }, null, transparent);
     }

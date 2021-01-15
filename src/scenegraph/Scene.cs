@@ -35,6 +35,10 @@ public class Scene : IDisposable {
         component.OnInit(Gb);
     }
 
+    public void RemoveComponent(Component component) {
+        Components.Remove(component);
+    }
+
     public void OnAudioReady(int bufferOffset) {
         foreach(Component c in Components) {
             c.OnAudioReady(Gb, bufferOffset);
