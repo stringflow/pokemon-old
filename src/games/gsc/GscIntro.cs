@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 // No stall strats for now
 public enum GscStrat {
 
@@ -27,13 +29,14 @@ public static class GscStratFunctions {
     }
 }
 
-public class GscIntroSequence {
+public class GscIntroSequence : List<GscStrat> {
 
     public int Delay;
-    public GscStrat[] Strats;
 
     public GscIntroSequence(params GscStrat[] strats) : this(0, strats) { }
-    public GscIntroSequence(int delay, params GscStrat[] strats) => (Delay, Strats) = (delay, strats);
+    public GscIntroSequence(int delay, params GscStrat[] strats) : base(strats) {
+        Delay = delay;
+    }
 
     public void Execute(Gsc gb) {
         ExecuteUntilIGT(gb);
@@ -41,7 +44,7 @@ public class GscIntroSequence {
     }
 
     public void ExecuteUntilIGT(Gsc gb) {
-        foreach(GscStrat strat in Strats) {
+        foreach(GscStrat strat in this) {
             strat.Execute(gb);
         }
 

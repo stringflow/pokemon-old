@@ -124,6 +124,10 @@ public partial class GameBoy : IDisposable {
         Libgambatte.gambatte_destroy(Handle);
     }
 
+    public void HardReset(bool fade = false) {
+        Libgambatte.gambatte_reset(Handle, fade ? 101 * (2 << 14) : 0);
+    }
+
     // Emulates 'runsamples' number of samples, or until a video frame has to be drawn. (1 sample = 2 cpu cycles)
     public int RunFor(int runsamples) {
         int videoFrameDoneSampleCount = Libgambatte.gambatte_runfor(Handle, VideoBuffer, 160, AudioBuffer, ref runsamples);
@@ -184,7 +188,6 @@ public partial class GameBoy : IDisposable {
     public byte CpuRead(int addr) {
         return Libgambatte.gambatte_cpuread(Handle, (ushort) addr);
     }
-
 
     // Returns the emulator state as a buffer.
     public byte[] SaveState() {
