@@ -10,6 +10,10 @@ public class GridComponent : Component {
         { Action.Left, new byte[] { 0xff, 0xff, 0x00 } },
         { Action.Right, new byte[] { 0xff, 0xff, 0x00 } },
         { Action.A, new byte[] { 0x00, 0xff, 0x00 } },
+        { Action.A | Action.Up, new byte[] { 0x00, 0xff, 0x00 } },
+        { Action.A | Action.Down, new byte[] { 0x00, 0xff, 0x00 } },
+        { Action.A | Action.Left, new byte[] { 0x00, 0xff, 0x00 } },
+        { Action.A | Action.Right, new byte[] { 0x00, 0xff, 0x00 } },
     };
 
     public byte SCX;
@@ -90,7 +94,7 @@ public class GridComponent : Component {
         byte newSCY = gb.CpuRead(0xff42);
         int xDiff = CalcDifference(SCX, newSCX);
         int yDiff = CalcDifference(SCY, newSCY);
-        if(!(newSCX == 0 && newSCY == 0 && (Math.Abs(xDiff) > 4 || Math.Abs(yDiff) > 4))) {
+        if(!(newSCX == 0 && newSCY == 0 && (Math.Abs(xDiff) > 8 || Math.Abs(yDiff) > 8))) {
             XOffset += xDiff;
             YOffset += yDiff;
         }
@@ -133,10 +137,9 @@ public class GridComponent : Component {
     }
 
     private void HideMenuTiles(byte[] state, int vramOffset, int xOffs, int yOffs) {
-        for(int tile = 0; tile < 32 * 32; tile++) {
-            int x = tile % 32;
-            int y = tile / 32;
-            if(x >= 0 && x < 20 && y >= 0 && y < 18) {
+        for(int x = 0; x < 20; x++) {
+            for(int y = 0; y < 18; y++) {
+                int tile = x + y * 32;
                 byte tileIdx = state[vramOffset + tile];
                 if(tileIdx >= 0x60) {
                     Buffer.FillRect(x * 8 + xOffs, y * 8 + yOffs, 8, 8, 0x00, 0x00, 0x00, 0x00);
