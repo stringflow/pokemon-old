@@ -285,8 +285,8 @@ public class GscMap : Map<GscTile> {
             palMap[i] = Game.ROM[EnvironmentColorPointer + timeOffset * 8 + palType];
         }
 
-        ushort[] bgPalData = Game.ROM.From("TilesetBGPalette").ReadU16le(168);
-        ushort[] roofPalData = Game.ROM.From(Game.SYM["RoofPals"] + Group * 8).ReadU16le(4);
+        ushort[] bgPalData = Game.ROM.From("TilesetBGPalette").ReadLE(168);
+        ushort[] roofPalData = Game.ROM.From(Game.SYM["RoofPals"] + Group * 8).ReadLE(4);
         Array.Copy(roofPalData, 0, bgPalData, 6 * 4 + 1, 2);
         Array.Copy(roofPalData, 0, bgPalData, 14 * 4 + 1, 2);
         Array.Copy(roofPalData, 2, bgPalData, 22 * 4 + 1, 2);

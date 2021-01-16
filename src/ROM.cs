@@ -187,7 +187,7 @@ public class ByteStream : MemoryStream {
     }
 
     // Reads 'length' number of ushorts in the little-endian format.
-    public ushort[] ReadU16le(int length) {
+    public ushort[] ReadLE(int length) {
         ushort[] ushorts = new ushort[length];
         for(int i = 0; i < length; i++) {
             ushorts[i] = u16le();
@@ -196,7 +196,7 @@ public class ByteStream : MemoryStream {
     }
 
     // Reads 'length' number of ushorts in the big-endian format.
-    public ushort[] ReadU16be(int length) {
+    public ushort[] ReadBE(int length) {
         ushort[] ushorts = new ushort[length];
         for(int i = 0; i < length; i++) {
             ushorts[i] = u16be();
