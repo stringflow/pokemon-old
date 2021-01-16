@@ -114,6 +114,11 @@ public class RbyPokemon {
         if(Special == 0) Special = UnmodifiedSpecial;
     }
 
+    public int ExpNeededForLevelUp() {
+        if(Level == 100) return -1;
+        return Species.GrowthRate.CalcExpNeeded(Level + 1);
+    }
+
     private ushort CalculateStat(byte dv, byte baseStat, ushort exp, int constant) {
         int n = 2 * (dv + baseStat);
         int expBonus = Math.Min((int) Math.Ceiling(Math.Sqrt(exp)), 255) / 4;

@@ -3,7 +3,7 @@ public class DVs {
     private ushort Value;
 
     public byte HP {
-        get { return (byte) (((Attack & 1) << 3) | ((Defense & 1) << 2) | ((Speed & 1) << 1) | ((Special & 1))); }
+        get { return (byte) (((Value >> 9) & 8) | ((Value >> 6) & 4) | ((Value >> 3) & 2) | (Value & 1)); }
     }
 
     public byte Attack {
