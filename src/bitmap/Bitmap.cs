@@ -102,6 +102,17 @@ public class Bitmap {
         }
     }
 
+    public void Unpack1BPP(byte[] data, byte[][] pal) {
+        for(int i = 0; i < data.Length; i++) {
+            int xTile = (i / 8 * 8) % Width;
+            int yTile = i / Width * 8;
+            for(int j = 0; j < 8; j++) {
+                byte[] col = pal[(data[i] >> (7 - j) & 1)];
+                SetPixel(xTile + j, yTile + (i & 7), col[0], col[1], col[2], col[3]);
+            }
+        }
+    }
+
     public void Unpack2BPP(byte[] data, byte[][] pal, bool transparent = false) {
         Unpack2BPP(data, new byte[][][] { pal }, null, transparent);
     }

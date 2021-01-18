@@ -141,14 +141,9 @@ public partial class Gsc : GameBoy {
         const int numCols = 16;
         byte[] gfx = ROM.Subarray("Font", 16 * 8 * 8);
         Bitmap bitmap = new Bitmap(numCols * 8, gfx.Length / numCols);
-        for(int i = 0; i < gfx.Length; i++) {
-            int xTile = (i / 8 * 8) % bitmap.Width;
-            int yTile = i / bitmap.Width * 8;
-            for(int j = 0; j < 8; j++) {
-                byte col = (byte) ((gfx[i] >> (7 - j) & 0x1) * 0xff);
-                bitmap.SetPixel(xTile + j, yTile + (i & 7), col, col, col, col);
-            }
-        }
+        bitmap.Unpack1BPP(gfx, new byte[][] {
+                                    new byte[] { 0x00, 0x00, 0x00, 0x00 },
+                                    new byte[] { 0xff, 0xff, 0xff, 0xff }});
 
         return new Font {
             Bitmap = bitmap,
