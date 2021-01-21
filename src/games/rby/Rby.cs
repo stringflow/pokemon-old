@@ -109,6 +109,8 @@ public partial class Rby : GameBoy {
             LoadMaps();
             ParsedROMs[ROM.GlobalChecksum] = Data;
         }
+
+        OverworldLoopAddress = SYM["JoypadOverworld"];
     }
 
     private void LoadTypeEffectivenessTable() {

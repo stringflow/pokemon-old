@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Threading;
 
 public partial class Rby {
 
@@ -251,5 +251,39 @@ public partial class Rby {
 
         // Now the cursor is over the 'target' slot, press A to select it.
         MenuPress(Joypad.A);
+    }
+
+    public byte[] MakeIGTState(RbyIntroSequence intro, byte[] initialState, int igt) {
+        LoadState(initialState);
+        CpuWrite("wPlayTimeSeconds", (byte) (igt / 60));
+        CpuWrite("wPlayTimeFrames", (byte) (igt % 60));
+        intro.ExecuteAfterIGT(this);
+        return SaveState();
+    }
+
+    public IGTResults IGTCheck(RbyIntroSequence intro, int numIgts, Func<GameBoy, bool> fn = null, int ss = 0, int ssOverwrite = -1) {
+        intro.ExecuteUntilIGT(this);
+        byte[] igtState = SaveState();
+        byte[][] states = new byte[numIgts][];
+        for(int i = 0; i < numIgts; i++) {
+            states[i] = MakeIGTState(intro, igtState, i);
+        }
+
+        return IGTCheck(states, fn, ss, ssOverwrite);
+    }
+
+    public static IGTResults IGTCheckParallel<Gb>(Gb[] gbs, RbyIntroSequence intro, int numIgts, Func<GameBoy, bool> fn = null, int ss = 0, int ssOverwrite = -1) where Gb : Rby {
+        intro.ExecuteUntilIGT(gbs[0]);
+        byte[] igtState = gbs[0].SaveState();
+        byte[][] states = new byte[numIgts][];
+        MultiThread.For(numIgts, gbs, (gb, i) => {
+            states[i] = gb.MakeIGTState(intro, igtState, i);
+        });
+
+        return IGTCheckParallel(gbs, states, fn, ss, ssOverwrite);
+    }
+
+    public static IGTResults IGTCheckParallel<Gb>(int numThreads, RbyIntroSequence intro, int numIgts, Func<GameBoy, bool> fn = null, int ss = 0, int ssOverwrite = -1) where Gb : Rby {
+        return IGTCheckParallel(MultiThread.MakeThreads<Gb>(numThreads), intro, numIgts, fn, ss, ssOverwrite);
     }
 }

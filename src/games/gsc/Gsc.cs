@@ -83,6 +83,8 @@ public partial class Gsc : GameBoy {
             LoadMaps();
             ParsedROMs[ROM.GlobalChecksum] = Data;
         }
+
+        OverworldLoopAddress = SYM["OWPlayerInput"];
     }
 
     private void LoadSpecies() {

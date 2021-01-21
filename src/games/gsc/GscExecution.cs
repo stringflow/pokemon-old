@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,15 +39,15 @@ public partial class Gsc {
                     Joypad input = (Joypad) action;
                     RunUntil("OWPlayerInput");
                     InjectOverworld(input);
-                    ret = Hold(input, "CountStep", "ChooseWildEncounter.startwildbattle", "PrintLetterDelay", "DoPlayerMovement.BumpSound");
+                    ret = Hold(input, "CountStep", "ChooseWildEncounter.startwildbattle", "PrintLetterDelay.checkjoypad", "DoPlayerMovement.BumpSound");
                     if(ret == SYM["CountStep"]) {
                         ret = Hold(input, "OWPlayerInput", "ChooseWildEncounter.startwildbattle");
-                        if(ret != SYM["OWPlayerInput"]) {
-                            return ret;
-                        }
-                    } else {
+                    }
+
+                    if(ret != SYM["OWPlayerInput"]) {
                         return ret;
                     }
+
                     InjectOverworld(Joypad.None);
                     break;
                 case Action.StartB:
@@ -148,22 +149,43 @@ public partial class Gsc {
         LoadState(state);
     }
 
-    public byte[][] MakeIGTStates(int timesec, GscIntroSequence intro, int numIgts) {
+    public byte[] MakeIGTState(GscIntroSequence intro, byte[] initialState, int igt) {
+        LoadState(initialState);
+        CpuWrite("wGameTimeSeconds", (byte) (igt / 60));
+        CpuWrite("wGameTimeFrames", (byte) (igt % 60));
+        intro.ExecuteAfterIGT(this);
+        return SaveState();
+    }
+
+    public IGTResults IGTCheck(int timesec, GscIntroSequence intro, int numIgts, Func<GameBoy, bool> fn = null, int ss = 0, int ssOverwrite = -1) {
         SetTimeSec(timesec);
         intro.ExecuteUntilIGT(this);
         byte[] igtState = SaveState();
-        byte[][] owStates = new byte[numIgts][];
+        byte[][] states = new byte[numIgts][];
         for(int i = 0; i < numIgts; i++) {
-            LoadState(igtState);
-            CpuWrite("wGameTimeSeconds", (byte) (i / 60));
-            CpuWrite("wGameTimeFrames", (byte) (i % 60));
-            intro.ExecuteAfterIGT(this);
-            owStates[i] = SaveState();
+            states[i] = MakeIGTState(intro, igtState, i);
         }
-        return owStates;
+
+        return IGTCheck(states, fn, ss, ssOverwrite);
     }
 
-    public static string CleanUpPathParallel<Gb>(Gb[] gbs, byte[][] states, int ss, Action[] path) where Gb : GameBoy {
+    public static IGTResults IGTCheckParallel<Gb>(Gb[] gbs, int timesec, GscIntroSequence intro, int numIgts, Func<GameBoy, bool> fn = null, int ss = 0, int ssOverwrite = -1) where Gb : Gsc {
+        gbs[0].SetTimeSec(timesec);
+        intro.ExecuteUntilIGT(gbs[0]);
+        byte[] igtState = gbs[0].SaveState();
+        byte[][] states = new byte[numIgts][];
+        MultiThread.For(numIgts, gbs, (gb, i) => {
+            states[i] = gb.MakeIGTState(intro, igtState, i);
+        });
+
+        return IGTCheckParallel(gbs, states, fn, ss, ssOverwrite);
+    }
+
+    public static IGTResults IGTCheckParallel<Gb>(int numThreads, int timesec, GscIntroSequence intro, int numIgts, Func<GameBoy, bool> fn = null, int ss = 0, int ssOverwrite = -1) where Gb : Gsc {
+        return IGTCheckParallel(MultiThread.MakeThreads<Gb>(numThreads), timesec, intro, numIgts, fn, ss, ssOverwrite);
+    }
+
+    public static string CleanUpPathParallel<Gb>(Gb[] gbs, byte[][] states, int ss, params Action[] path) where Gb : Gsc {
         List<int> aPressIndices = new List<int>();
         for(int i = 0; i < path.Length; i++) {
             if((path[i] & Action.A) > 0) aPressIndices.Add(i);
@@ -171,13 +193,7 @@ public partial class Gsc {
 
         foreach(int index in aPressIndices) {
             path[index] &= ~Action.A;
-            int successes = states.Length;
-            MultiThread.For(states.Length, gbs, (gb, igt) => {
-                gb.LoadState(states[igt]);
-                if(gb.Execute(path) != gb.SYM["OWPlayerInput"]) {
-                    Interlocked.Decrement(ref successes);
-                }
-            });
+            int successes = IGTCheckParallel(gbs, states, gb => gb.Execute(path) == gb.SYM["OWPlayerInput"]).TotalSuccesses;
             if(successes < ss) {
                 path[index] |= Action.A;
             }

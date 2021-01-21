@@ -75,10 +75,11 @@ public partial class GameBoy : IDisposable {
 
     // Get Reg and flag values.
     public Registers Registers {
-        get {
-            Libgambatte.gambatte_getregs(Handle, out Registers regs);
-            return regs;
-        }
+        get { Libgambatte.gambatte_getregs(Handle, out Registers regs); return regs; }
+    }
+
+    public int DividerState {
+        get { return Libgambatte.gambatte_getdivstate(Handle); }
     }
 
     public GameBoy(string biosFile, string romFile, SpeedupFlags speedupFlags = SpeedupFlags.None) {
