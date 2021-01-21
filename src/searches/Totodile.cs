@@ -50,7 +50,7 @@ public static class Totodile {
     public static void OverworldSearch(Gsc gb, TotodileState state) {
         byte[] oldState = gb.SaveState();
         if(state.EdgeSet == 1 && state.Tile.X == 7 && state.Tile.Y == 4) {
-            gb.Inject(Joypad.A);
+            gb.InjectOverworld(Joypad.A);
             gb.AdvanceFrame(Joypad.A);
             gb.Hold(Joypad.B, "GetJoypad");
             gb.AdvanceFrame(Joypad.B);
