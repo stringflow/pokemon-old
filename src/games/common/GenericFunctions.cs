@@ -24,7 +24,6 @@ public partial class GameBoy {
         throw new NotImplementedException();
     }
 
-
     // Helper function that executes the specified string path.
     public int Execute(string path) {
         return Execute(Array.ConvertAll(path.Split(" "), e => e.ToAction()));
@@ -40,7 +39,11 @@ public partial class GameBoy {
         }
     }
 
-    public virtual void ClearText(bool holdDuringText, params Joypad[] joypads) {
+    public void ClearText(bool holdDuringText, params Joypad[] joypads) {
+        ClearText(holdDuringText, int.MaxValue, joypads);
+    }
+
+    public virtual void ClearText(bool holdDuringText, int numTextBoxes, params Joypad[] joypads) {
         throw new NotImplementedException();
     }
 

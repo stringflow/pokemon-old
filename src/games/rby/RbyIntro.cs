@@ -203,20 +203,20 @@ public class RbyIntroSequence : List<RbyStrat> {
             { new RbyIntroSequence(RbyStrat.NoPal, RbyStrat.GfSkip, RbyStrat.IntroWait, RbyStrat.TitleSkip, RbyStrat.NewGame), 0xE24E },
         };
 
-        TestIntro(new Red(true), "red", redIntros);
-        TestIntro(new Yellow(true), "yellow", yellowIntros);
+        TestIntros(new Red(true), "red", redIntros);
+        TestIntros(new Yellow(true), "yellow", yellowIntros);
 
-        void TestIntro(Rby gb, string gameName, Dictionary<RbyIntroSequence, ushort> intros) {
+        void TestIntros(Rby gb, string gameName, Dictionary<RbyIntroSequence, ushort> intros) {
             foreach(var i in intros) {
                 RbyIntroSequence intro = i.Key;
                 ushort expectedTid = i.Value;
-                Console.Write(gameName + "_" + intro.ToString() + ": ");
+                Console.Write(gameName + "_" + intro.ToString() + " ... ");
                 gb.HardReset();
                 intro.Execute(gb);
                 gb.RunUntil("PrintLetterDelay");
                 ushort readTid = gb.CpuReadBE<ushort>("wPlayerID");
                 if(expectedTid == readTid) {
-                    Console.WriteLine("SUCCESS");
+                    Console.WriteLine("OK");
                 } else {
                     Console.WriteLine("FAILURE (expected=0x{0:x4}; read=0x{1:x4})", expectedTid, readTid);
                 }

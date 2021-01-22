@@ -5,10 +5,13 @@ using System.Collections.Generic;
 public class DFParameters<Gb, T> where Gb : GameBoy
                                  where T : Tile<T> {
 
+    public bool PruneAlreadySeenStates = true;
     public int MaxCost = 0;
     public int NoEncounterSS = 1;
     public int EncounterSS = 0;
+    public string LogStart = "";
     public T[] EndTiles = null;
+    public int EndEdgeSet = 0;
     public Func<Gb, bool> EncounterCallback = null;
     public Action<DFState<T>> FoundCallback = null;
 }
@@ -20,7 +23,7 @@ public class DFState<T> where T : Tile<T> {
     public int WastedFrames;
     public Action BlockedActions;
     public IGTResults IGT;
-    public string Path;
+    public string Log;
 
     public override int GetHashCode() {
         unchecked {
@@ -53,20 +56,20 @@ public static class DepthFirstSearch {
             Tile = startTile,
             EdgeSet = startEdgeSet,
             WastedFrames = 0,
-            Path = "",
-            BlockedActions = Action.None,
+            Log = parameters.LogStart,
+            BlockedActions = Action.A,
             IGT = initialState,
         }, new HashSet<int>());
     }
 
     private static void RecursiveSearch<Gb, T>(Gb[] gbs, DFParameters<Gb, T> parameters, DFState<T> state, HashSet<int> seenStates) where Gb : GameBoy
                                                                                                                                     where T : Tile<T> {
-        if(parameters.EndTiles != null && parameters.EndTiles.Any(t => t.X == state.Tile.X && t.Y == state.Tile.Y)) {
+        if(parameters.EndTiles != null && state.EdgeSet == parameters.EndEdgeSet && parameters.EndTiles.Any(t => t.X == state.Tile.X && t.Y == state.Tile.Y)) {
             if(parameters.FoundCallback != null) parameters.FoundCallback(state);
-            else Console.WriteLine(state.Path);
+            else Console.WriteLine(state.Log);
         }
 
-        if(!seenStates.Add(state.GetHashCode())) {
+        if(parameters.PruneAlreadySeenStates && !seenStates.Add(state.GetHashCode())) {
             return;
         }
 
@@ -81,7 +84,7 @@ public static class DepthFirstSearch {
             DFState<T> newState = new DFState<T>() {
                 Tile = edge.NextTile,
                 EdgeSet = edge.NextEdgeset,
-                Path = state.Path + edge.Action.LogString() + " ",
+                Log = state.Log + edge.Action.LogString() + " ",
                 IGT = results,
                 WastedFrames = state.WastedFrames + edge.Cost,
             };
@@ -96,7 +99,7 @@ public static class DepthFirstSearch {
 
                 if(encounterSuccesses >= parameters.EncounterSS) {
                     if(parameters.FoundCallback != null) parameters.FoundCallback(newState);
-                    else Console.WriteLine(state.Path);
+                    else Console.WriteLine(state.Log);
                 }
             }
 

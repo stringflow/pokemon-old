@@ -4,6 +4,7 @@ using System.Collections.Generic;
 public enum GscStrat {
 
     GfSkip,
+    TitleSkip,
     MmBack, Continue,
     FsBack
 }
@@ -12,9 +13,11 @@ public static class GscStratFunctions {
 
     public static void Execute(this GscStrat strat, Gsc gb) {
         switch(strat) {
+            case GscStrat.TitleSkip:
+                gb.Press(Joypad.Start);
+                break;
             case GscStrat.GfSkip:
-                gb.Hold(Joypad.Left, 0x100);
-                gb.Press(Joypad.Start, Joypad.Start);
+                gb.Press(Joypad.Start);
                 break;
             case GscStrat.MmBack:
                 gb.Press(Joypad.B, Joypad.Start);
@@ -44,6 +47,9 @@ public class GscIntroSequence : List<GscStrat> {
     }
 
     public void ExecuteUntilIGT(Gsc gb) {
+        gb.HardReset(false);
+        gb.Hold(Joypad.Left, 0x100);
+
         foreach(GscStrat strat in this) {
             strat.Execute(gb);
         }

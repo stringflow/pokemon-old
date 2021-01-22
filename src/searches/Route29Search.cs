@@ -87,7 +87,7 @@ public static class Route29Search {
             stateList.Add(new byte[60][]);
         }
 
-        new GscIntroSequence(GscStrat.GfSkip, GscStrat.Continue).ExecuteUntilIGT(gb);
+        new GscIntroSequence(GscStrat.GfSkip, GscStrat.TitleSkip, GscStrat.Continue).ExecuteUntilIGT(gb);
         gb.AdvanceFrames(minDelay, Joypad.Left);
         byte[] state = gb.SaveState();
         for(int i = 0; i < stateList.Count(); i++) {
@@ -121,7 +121,7 @@ public static class Route29Search {
 
     public static void EndSearch(int numThreads, int delay, string path, int ss) {
         Gold[] gbs = MultiThread.MakeThreads<Gold>(numThreads);
-        byte[][] initialStates = Gsc.IGTCheckParallel(gbs, 120, new GscIntroSequence(delay, GscStrat.GfSkip, GscStrat.Continue), 60, gb => gb.Execute(path) == gb.OverworldLoopAddress).States;
+        byte[][] initialStates = Gsc.IGTCheckParallel(gbs, 120, new GscIntroSequence(delay, GscStrat.GfSkip, GscStrat.TitleSkip, GscStrat.Continue), 60, gb => gb.Execute(path) == gb.OverworldLoopAddress).States;
         R29(gbs, initialStates, r29[38, 16]);
     }
 
@@ -199,7 +199,7 @@ public static class Route29Search {
             EndTiles = new GscTile[] { r30[17, 12] },
             FoundCallback = state => {
                 Console.WriteLine("Found an end path!!");
-                endWriter.WriteLine(ActionFunctions.ActionsToPath(path) + " " + state.Path);
+                endWriter.WriteLine(ActionFunctions.ActionsToPath(path) + " " + state.Log);
                 endWriter.Flush();
             }
         };
@@ -208,7 +208,7 @@ public static class Route29Search {
 
     public static void IGT(int delay, string path) {
         MakeSave();
-        IGTResults res = Gsc.IGTCheckParallel(MultiThread.MakeThreads<Gold>(8), 120, new GscIntroSequence(delay, GscStrat.GfSkip, GscStrat.Continue), 60, gb => gb.Execute(path) == gb.OverworldLoopAddress);
+        IGTResults res = Gsc.IGTCheckParallel(MultiThread.MakeThreads<Gold>(8), 120, new GscIntroSequence(delay, GscStrat.GfSkip, GscStrat.TitleSkip, GscStrat.Continue), 60, gb => gb.Execute(path) == gb.OverworldLoopAddress);
         Console.WriteLine(res.TotalSuccesses + " (RNG: " + res.RNGSuccesses(10) + ")");
     }
 
@@ -217,7 +217,7 @@ public static class Route29Search {
         Gold gb = new Gold(true);
         gb.Record("frame" + delay);
         gb.SetTimeSec(120);
-        new GscIntroSequence(delay, GscStrat.GfSkip, GscStrat.Continue).Execute(gb);
+        new GscIntroSequence(delay, GscStrat.GfSkip, GscStrat.TitleSkip, GscStrat.Continue).Execute(gb);
         gb.Execute(path);
         gb.Dispose();
     }

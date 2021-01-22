@@ -75,7 +75,7 @@ public partial class Rby {
         RunUntil("JoypadOverworld");
     }
 
-    public override void ClearText(bool holdDuringText, params Joypad[] menuJoypads) {
+    public override void ClearText(bool holdDuringText, int numTextBoxes, params Joypad[] menuJoypads) {
         int[] textAddrs = {
             SYM["PrintLetterDelay.checkButtons"] + 0x3,
             SYM["WaitForTextScrollButtonPress.skipAnimation"] + 0xa,
@@ -91,7 +91,9 @@ public partial class Rby {
         Joypad hold = Joypad.None;
         if(holdDuringText) hold = menuJoypads.Length > 0 ? menuJoypads[menuJoypadsIndex] ^ (Joypad) 0x3 : Joypad.B;
 
-        while(true) {
+        int clearCounter = 0;
+
+        while(true && clearCounter < numTextBoxes) {
             // Hold the specified input until the joypad state is polled.
             Hold(hold, "Joypad");
             // Read the current position of the stack.
@@ -139,6 +141,7 @@ public partial class Rby {
                                                                             // (Joypad.B) 10 xor 11 = 01 (Joypad.A)
                 Inject(advance);
                 AdvanceFrame(advance);
+                clearCounter++;
             }
         }
     }

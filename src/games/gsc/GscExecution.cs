@@ -65,7 +65,7 @@ public partial class Gsc {
         return ret;
     }
 
-    public override void ClearText(bool holdDuringText, params Joypad[] menuJoypads) {
+    public override void ClearText(bool holdDuringText, int numTextBoxes, params Joypad[] menuJoypads) {
         // A list of routines that prompt the user to advance the text with either A or B.
         int[] textAdvanceAddrs = {
             SYM["PromptButton.input_wait_loop"] + 0x6,
@@ -80,7 +80,9 @@ public partial class Gsc {
         Joypad hold = Joypad.None;
         if(holdDuringText) hold = menuJoypads.Length > 0 ? menuJoypads[menuJoypadsIndex] ^ (Joypad) 0x3 : Joypad.B;
 
-        while(true) {
+        int clearCounter = 0;
+
+        while(true && clearCounter < numTextBoxes) {
             // Hold the specified input until the joypad state is polled.
             Hold(hold, "GetJoypad");
 
@@ -107,6 +109,7 @@ public partial class Gsc {
                                                                             // (Joypad.B) 10 xor 11 = 01 (Joypad.A)
                 Inject(advance);
                 AdvanceFrame(advance);
+                clearCounter++;
             } else {
                 // If the call originated from 'HandleMapTimeAndJoypad' and there is currently a sprite being moved by a script, don't break.
                 if(stack[0] == (SYM["HandleMapTimeAndJoypad"] & 0xffff) + 0xc && CpuRead("wScriptMode") == 2) {
