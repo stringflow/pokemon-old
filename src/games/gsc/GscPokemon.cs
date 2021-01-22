@@ -56,12 +56,12 @@ public class GscPokemon {
     public bool Frozen { get { return (Status & 0x20) > 0; } }
     public bool Paralyzed { get { return (Status & 0x40) > 0; } }
 
-    // NIGHTMARE
+    public bool HasNightmare { get { return (BattleStatus1 & 0x01) > 0; } }
     public bool Curesed { get { return (BattleStatus1 & 0x02) > 0; } }
     public bool Protected { get { return (BattleStatus1 & 0x04) > 0; } }
     public bool Indentified { get { return (BattleStatus1 & 0x08) > 0; } }
-    // PREISH SONG
-    // ENDURE
+    public bool PerishSongActive { get { return (BattleStatus1 & 0x10) > 0; } }
+    public bool Enduring { get { return (BattleStatus1 & 0x20) > 0; } }
     public bool RollingOut { get { return (BattleStatus1 & 0x40) > 0; } }
     public bool InLove { get { return (BattleStatus1 & 0x80) > 0; } }
 
@@ -95,6 +95,31 @@ public class GscPokemon {
     public bool Safeguarded { get { return (Screens & 0x04) > 0; } }
     public bool LightScreenActive { get { return (Screens & 0x08) > 0; } }
     public bool ReflectActive { get { return (Screens & 0x10) > 0; } }
+
+    public Gender Gender {
+        get {
+            switch(Species.GenderRatio) {
+                case 0xff: return Gender.Genderless;
+                case 0xfe: return Gender.Female;
+                case 0x00: return Gender.Male;
+                default: return Species.GenderRatio < (DVs.Attack << 4 | DVs.Speed) ? Gender.Male : Gender.Female;
+            }
+        }
+    }
+
+    public GscType HPType {
+        get {
+            GscType type = (GscType) ((DVs.Defense & 3) + ((DVs.Attack & 3) << 2));
+            if(type == GscType.Normal) type++;
+            if(type == GscType.Bird) type++;
+            if(type > GscType.Steel) type += 0xc;
+            return type;
+        }
+    }
+
+    public byte HPPower {
+        get { return (byte) ((((DVs.Attack & 8) | ((DVs.Defense & 8) >> 1) | ((DVs.Speed & 8) >> 2) | ((DVs.Special & 8) >> 3)) * 5 + (DVs.Special & 3)) / 2 + 31); }
+    }
 
     public GscPokemon() { }
     public GscPokemon(GscSpecies species, byte level) : this(species, level, 0x9888) { }

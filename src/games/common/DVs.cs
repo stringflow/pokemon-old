@@ -26,6 +26,16 @@ public class DVs {
         set { Value = (byte) ((Value & 0xfff0) | value); }
     }
 
+    public byte Upper {
+        get { return (byte) (Value >> 8); }
+        set { Value = (byte) ((Value & 0x00ff) | value); }
+    }
+
+    public byte Lower {
+        get { return (byte) (Value & 0xff); }
+        set { Value = (byte) ((Value & 0xff00) | value); }
+    }
+
     public override string ToString() {
         return string.Format("0x{0:x4}", Value);
     }
