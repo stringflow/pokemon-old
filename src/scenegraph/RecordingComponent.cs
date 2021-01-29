@@ -1,6 +1,4 @@
 using System;
-using System.Diagnostics;
-using System.IO;
 
 public class RecordingComponent : Component {
 
@@ -24,7 +22,7 @@ public class RecordingComponent : Component {
     public override void Dispose(GameBoy gb) {
         VideoStream.Close();
         AudioStream.Close();
-        RunFFMPEGCommand("-y -i movies/video.mp4 -i movies/audio.mp3 -c:v copy -c:a copy -shortest movies/" + Movie + ".mp4");
+        FFMPEG.RunFFMPEGCommand("-y -i movies/video.mp4 -i movies/audio.mp3 -c:v copy -c:a copy -shortest movies/" + Movie + ".mp4");
     }
 
     public override void OnAudioReady(GameBoy gb, int bufferOffset) {
@@ -36,38 +34,6 @@ public class RecordingComponent : Component {
         while(gb.EmulatedSamples > RecordingNow) {
             VideoStream.Stream.Write(OffscreenBuffer);
             RecordingNow += Math.Pow(2, 21) / 60.0;
-        }
-    }
-
-    private static Process RunFFMPEGCommand(string args, bool wait = true) {
-        Process p = new Process();
-        p.StartInfo.FileName = "ffmpeg";
-        p.StartInfo.Arguments = args;
-        p.StartInfo.UseShellExecute = false;
-        p.StartInfo.CreateNoWindow = true;
-        p.StartInfo.RedirectStandardInput = true;
-        p.StartInfo.RedirectStandardError = true;
-        //p.ErrorDataReceived += (sender, e) => Console.WriteLine(e.Data);
-        p.Start();
-        p.BeginErrorReadLine();
-        if(wait) p.WaitForExit();
-        return p;
-    }
-
-    public class FFMPEGStream {
-
-        public Process Process;
-        public Stream Stream;
-
-        public FFMPEGStream(string args) {
-            Process = RunFFMPEGCommand(args, false);
-            Stream = Process.StandardInput.BaseStream;
-        }
-
-        public void Close() {
-            Stream.Flush();
-            Stream.Close();
-            Process.WaitForExit();
         }
     }
 }
