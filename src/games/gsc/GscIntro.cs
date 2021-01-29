@@ -13,10 +13,10 @@ public static class GscStratFunctions {
 
     public static void Execute(this GscStrat strat, Gsc gb) {
         switch(strat) {
-            case GscStrat.TitleSkip:
+            case GscStrat.GfSkip:
                 gb.Press(Joypad.Start);
                 break;
-            case GscStrat.GfSkip:
+            case GscStrat.TitleSkip:
                 gb.Press(Joypad.Start);
                 break;
             case GscStrat.MmBack:

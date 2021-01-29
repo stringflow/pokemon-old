@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Threading;
 
 public partial class Rby {
 
@@ -10,10 +9,7 @@ public partial class Rby {
 
     public override void Press(params Joypad[] joypads) {
         foreach(Joypad joypad in joypads) {
-            do {
-                RunFor(1);
-                RunUntil("Joypad");
-            } while((CpuRead(SYM["wd730"]) & 0x20) != 0);
+            RunUntil("_Joypad");
             Inject(joypad);
             AdvanceFrame();
         }
@@ -75,7 +71,7 @@ public partial class Rby {
         RunUntil("JoypadOverworld");
     }
 
-    public override void ClearText(bool holdDuringText, int numTextBoxes, params Joypad[] menuJoypads) {
+    public override void ClearText(Joypad holdInput, int numTextBoxes) {
         int[] textAddrs = {
             SYM["PrintLetterDelay.checkButtons"] + 0x3,
             SYM["WaitForTextScrollButtonPress.skipAnimation"] + 0xa,
@@ -87,15 +83,11 @@ public partial class Rby {
         int cameFrom;
         int stackPointer;
 
-        int menuJoypadsIndex = 0;
-        Joypad hold = Joypad.None;
-        if(holdDuringText) hold = menuJoypads.Length > 0 ? menuJoypads[menuJoypadsIndex] ^ (Joypad) 0x3 : Joypad.B;
-
         int clearCounter = 0;
 
         while(true && clearCounter < numTextBoxes) {
             // Hold the specified input until the joypad state is polled.
-            Hold(hold, "Joypad");
+            Hold(holdInput, "Joypad");
             // Read the current position of the stack.
             stackPointer = Registers.SP;
             // When the 'Joypad' routine is called, the address of the following instruction is pushed onto the stack.
@@ -116,11 +108,6 @@ public partial class Rby {
                                                                                                    // (3) Joypad input must not be ignored,
                                                                                                    // (4) Joypad states can not be simulated (player is in a cutscene)
                     AdvanceFrame();
-                } else if(menuJoypadsIndex < menuJoypads.Length) {
-                    Inject(menuJoypads[menuJoypadsIndex]);
-                    AdvanceFrame(menuJoypads[menuJoypadsIndex]);
-                    menuJoypadsIndex++;
-                    if(holdDuringText && menuJoypadsIndex != menuJoypads.Length) hold = menuJoypads[menuJoypadsIndex] ^ (Joypad) 0x3;
                 } else {
                     // If it is time to break out of the loop, run for 1 sample to allow for continuous calls of this function.
                     RunFor(1);
@@ -130,8 +117,8 @@ public partial class Rby {
 
             if(cameFrom == textAddrs[0]) {
                 // If the call originated from 'PrintLetterDelay', advance a frame with the specified button to hold.
-                Inject(hold);
-                AdvanceFrame(hold);
+                Inject(holdInput);
+                AdvanceFrame(holdInput);
             } else {
                 // If the call did not originate from 'PrintLetterDelay', advance the textbox with the opposite button used in the previous frame.
                 byte previous = (byte) (CpuRead("hJoyLast") & (byte) (Joypad.A | Joypad.B));
@@ -163,26 +150,25 @@ public partial class Rby {
         return Execute(path.ToArray());
     }
 
-    public void UseMove(int slot) {
-        if(CpuRead("wTopMenuItemX") != 0x9) MenuPress(Joypad.Left);
-        SelectMenuItem(0);
-        SelectMenuItem(slot);
+    public void BattleMenu(int x, int y) {
+        if(CpuRead("wIsInBattle") > 0) {
+            byte xMenu = CpuRead("wTopMenuItemX");
+            if(x == 0 && xMenu != 0x9) MenuPress(Joypad.Left);
+            else if(x == 1 && xMenu != 0xff) MenuPress(Joypad.Right);
+            ChooseMenuItem(y);
+        }
     }
 
-    public void UseMove1() {
-        UseMove(0);
+    public void PartySwap(int x, int y) {
+        ChooseMenuItem(x);
+        ChooseMenuItem(1);
+        ChooseMenuItem(y);
     }
 
-    public void UseMove2() {
-        UseMove(1);
-    }
-
-    public void UseMove3() {
-        UseMove(2);
-    }
-
-    public void UseMove4() {
-        UseMove(3);
+    public void ItemSwap(int x, int y) {
+        BattleMenu(0, 1);
+        SelectListItem(x);
+        SelectListItem(y);
     }
 
     public void UseItem(string item, int target = -1) {
@@ -190,14 +176,15 @@ public partial class Rby {
     }
 
     public void UseItem(RbyItem item, int target) {
-        if(CpuRead("wTopMenuItemX") != 0x9) MenuPress(Joypad.Left);
-        SelectMenuItem(1);
-        SelectListItem(Bag.IndexOf(item));
+        BattleMenu(0, 1);
+        ChooseListItem(Bag.IndexOf(item));
 
         switch(item.ExecutionPointerLabel) {
+            case "ItemUsePPUp":
+            case "ItemUsePPRestore":
             case "ItemUseMedicine":
-                SelectMenuItem(target != -1 ? target : CpuRead("wCurrentMenuItem"));
-                MenuPress(Joypad.A, Joypad.B);
+                ChooseMenuItem(target != -1 ? target : CpuRead("wCurrentMenuItem"));
+                Press(Joypad.B);
                 break;
             case "ItemUseXAccuracy":
             case "ItemUseXStat":
@@ -210,50 +197,70 @@ public partial class Rby {
     }
 
     public void Switch(int slot) {
-        if(CpuRead("wTopMenuItemX") != 0xf) MenuPress(Joypad.Right);
-        SelectMenuItem(0);
-        SelectMenuItem(slot);
-        MenuPress(Joypad.A);
+        BattleMenu(1, 0);
+        ChooseMenuItem(slot);
+        ChooseMenuItem(0);
     }
 
-    public void SelectMenuItem(int target) {
-        RunUntil("HandleMenuInput_.getJoypadState");
-        MenuScroll(target, CpuRead("wCurrentMenuItem"), CpuRead("wMaxMenuItem"), CpuRead("wMenuWrappingEnabled") > 0);
+    public void UseMove(int slot) {
+        BattleMenu(0, 0);
+        ChooseMenuItem(0);
+        ChooseMenuItem(slot);
+        ChooseMenuItem(0);
     }
 
-    public void SelectListItem(int target) {
-        RunUntil("HandleMenuInput_.getJoypadState");
-        MenuScroll(target, CpuRead("wCurrentMenuItem") + CpuRead("wListScrollOffset"), CpuRead("wListCount"), false);
+    public virtual void ChooseMenuItem(int target) {
+        throw new NotImplementedException();
     }
 
-    private void MenuScroll(int target, int current, int max, bool wrapping) {
-        if((CpuRead(0xfff6 + (this is Yellow ? 4 : 0)) & 0x02) > 0) {
-            // The move selection is its own thing for some reason, so the input values are wrong have to be adjusted.
-            current--;
-            max = CpuRead("wNumMovesMinusOne");
-            wrapping = true;
-        }
-        // The input is either Up or Down depending on whether the 'target' slot is above or below the 'current' slot.
-        Joypad input = target < current ? Joypad.Up : Joypad.Down;
-        // The number of inputs needed is the distance between the 'current' slot and the 'target' slot.
-        int amount = Math.Abs(current - target);
+    public virtual void SelectMenuItem(int target) {
+        throw new NotImplementedException();
+    }
 
-        // If the menu wraps around, the number of inputs should never exceed half of the menus size.
-        if(wrapping && amount > max / 2) {
-            // If it does exceed, going the other way is fewer inputs.
-            amount = max - amount + 1;
-            input ^= (Joypad) 0xc0; // Switch to the other button. This is achieved by XORing the value by 0xc0.
-                                    // (Joypad.Down) 01000000 xor 11000000 = 10000000 (Joypad.Up)
-                                    // (Joypad.Up)   10000000 xor 11000000 = 01000000 (Joypad.Down)
-        }
+    public virtual void ChooseListItem(int target) {
+        throw new NotImplementedException();
+    }
 
-        // Press the 'input' 'amount' of times.
-        for(int i = 0; i < amount; i++) {
-            MenuPress(input);
+    public virtual void SelectListItem(int target) {
+        throw new NotImplementedException();
+    }
+
+    public void MenuScroll(int target, Joypad clickInput, bool clickWithScroll) {
+        var scroll = CalcScroll(target, CpuRead("wCurrentMenuItem"), CpuRead("wMaxMenuItem"), CpuRead("wMenuWrappingEnabled") > 0);
+
+        if(clickWithScroll) {
+            scroll.Amount--;
+            clickInput |= scroll.Input;
         }
 
-        // Now the cursor is over the 'target' slot, press A to select it.
-        MenuPress(Joypad.A);
+        for(int i = 0; i < scroll.Amount; i++) {
+            MenuPress(scroll.Input);
+        }
+
+        MenuPress(clickInput);
+    }
+
+    public void ListScroll(int target, Joypad clickInput, bool clickWithScroll) {
+        // TODO: Not sure if this code is all correct
+        var scroll = CalcScroll(target, CpuRead("wCurrentMenuItem") + CpuRead("wListScrollOffset"), CpuRead("wListCount"), false);
+
+        for(int i = 0; i < scroll.Amount - 1; i++) {
+            MenuPress(scroll.Input | (Joypad) (((i & 1) + 1) << 4), true);
+        }
+
+        byte menuItem = CpuRead("wCurrentMenuItem");
+        bool canClickWithScroll = clickWithScroll && (menuItem == 1 || (menuItem == 0 && scroll.Input == Joypad.Down) || (menuItem == 2 && scroll.Input == Joypad.Down));
+
+        if(scroll.Amount == 0) {
+            MenuPress(clickInput | Joypad.Left, true);
+        } else {
+            if(canClickWithScroll) {
+                MenuPress(scroll.Input | Joypad.Start, true);
+                MenuPress(clickInput, true);
+            } else {
+                MenuPress(scroll.Input | clickInput, true);
+            }
+        }
     }
 
     public byte[] MakeIGTState(RbyIntroSequence intro, byte[] initialState, int igt) {

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 public class RedBlue : Rby {
@@ -252,6 +253,26 @@ public class RedBlue : Rby {
     };
 
     public RedBlue(string rom, bool speedup = false) : base(rom, speedup ? SpeedupFlags.All : SpeedupFlags.None) { }
+
+    public override void ChooseMenuItem(int target) {
+        RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
+        MenuScroll(target, Joypad.A, CpuReadLE<ushort>(Registers.SP + 6) != SYM["RedisplayStartMenu.loop"] + 0x3);
+    }
+
+    public override void SelectMenuItem(int target) {
+        RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
+        MenuScroll(target, Joypad.Select, true);
+    }
+
+    public override void ChooseListItem(int target) {
+        RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
+        ListScroll(target, Joypad.A, true);
+    }
+
+    public override void SelectListItem(int target) {
+        RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
+        ListScroll(target, Joypad.Select, true);
+    }
 }
 
 public class Red : RedBlue {

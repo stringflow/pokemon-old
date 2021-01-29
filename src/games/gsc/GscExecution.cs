@@ -12,7 +12,7 @@ public partial class Gsc {
                 InjectOverworld(joypad);
                 Hold(joypad, "GetJoypad");
             } else {
-                Hold(joypad, "GetJoypad");
+                Hold(joypad, SYM["GetJoypad"] + 0x7);
                 Inject(joypad);
                 AdvanceFrame(joypad);
             }
@@ -65,7 +65,7 @@ public partial class Gsc {
         return ret;
     }
 
-    public override void ClearText(bool holdDuringText, int numTextBoxes, params Joypad[] menuJoypads) {
+    public override void ClearText(Joypad holdInput, int numTextBoxes) {
         // A list of routines that prompt the user to advance the text with either A or B.
         int[] textAdvanceAddrs = {
             SYM["PromptButton.input_wait_loop"] + 0x6,
@@ -76,15 +76,11 @@ public partial class Gsc {
         int stackPointer;
         int[] stack = new int[2];
 
-        int menuJoypadsIndex = 0;
-        Joypad hold = Joypad.None;
-        if(holdDuringText) hold = menuJoypads.Length > 0 ? menuJoypads[menuJoypadsIndex] ^ (Joypad) 0x3 : Joypad.B;
-
         int clearCounter = 0;
 
         while(true && clearCounter < numTextBoxes) {
             // Hold the specified input until the joypad state is polled.
-            Hold(hold, "GetJoypad");
+            Hold(holdInput, "GetJoypad");
 
             // Read the current position of the stack.
             stackPointer = Registers.SP;
@@ -98,8 +94,8 @@ public partial class Gsc {
             // 'PrintLetterDelay' directly calls 'GetJoypad', therefore it will always be on the top of the stack.
             if(stack[0] == SYM["PrintLetterDelay.checkjoypad"] + 0x3) {
                 // If the 'GetJoypad' call originated from PrintLetterDelay, use the 'hold' input to advance a frame.
-                Inject(hold);
-                AdvanceFrame(hold);
+                Inject(holdInput);
+                AdvanceFrame(holdInput);
             } else if(stack.Intersect(textAdvanceAddrs).Any()) {
                 // One of the 'textAdvanceAddrs' has been hit, clear the text box with the opposite button used in the previous frame.
                 byte previous = (byte) (CpuRead("hJoyDown") & (byte) (Joypad.A | Joypad.B));
@@ -114,11 +110,6 @@ public partial class Gsc {
                 // If the call originated from 'HandleMapTimeAndJoypad' and there is currently a sprite being moved by a script, don't break.
                 if(stack[0] == (SYM["HandleMapTimeAndJoypad"] & 0xffff) + 0xc && CpuRead("wScriptMode") == 2) {
                     AdvanceFrame();
-                } else if(menuJoypadsIndex < menuJoypads.Length) {
-                    Inject(menuJoypads[menuJoypadsIndex]);
-                    AdvanceFrame(menuJoypads[menuJoypadsIndex]);
-                    menuJoypadsIndex++;
-                    if(holdDuringText && menuJoypadsIndex != menuJoypads.Length) hold = menuJoypads[menuJoypadsIndex] ^ (Joypad) 0x3;
                 } else {
                     break;
                 }

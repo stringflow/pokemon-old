@@ -51,7 +51,9 @@ public static class Totodile {
         gb.InjectOverworld(Joypad.A);
         gb.AdvanceFrame(Joypad.A);
         gb.Press(Joypad.B);
-        gb.ClearText(true, 4, Joypad.A);
+        gb.ClearText(Joypad.B);
+        gb.Press(Joypad.A);
+        gb.ClearText(Joypad.B, 3);
         gb.Hold(Joypad.B, "CalcMonStats");
         return gb.PartyMon1;
     }
