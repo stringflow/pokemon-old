@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Pokemon", "Pokemon\Pokemon.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Pokemon.UnitTests", "Pokemon.UnitTests\Pokemon.UnitTests.csproj", "{42CF2E4C-62D6-4A0E-A8F5-65CC68438796}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pokemon.UI", "Pokemon.UI\Pokemon.UI.csproj", "{8FE82170-AED3-4210-80BD-717CA43C33B8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{42CF2E4C-62D6-4A0E-A8F5-65CC68438796}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{42CF2E4C-62D6-4A0E-A8F5-65CC68438796}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{42CF2E4C-62D6-4A0E-A8F5-65CC68438796}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8FE82170-AED3-4210-80BD-717CA43C33B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8FE82170-AED3-4210-80BD-717CA43C33B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FE82170-AED3-4210-80BD-717CA43C33B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8FE82170-AED3-4210-80BD-717CA43C33B8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
