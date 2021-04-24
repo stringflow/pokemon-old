@@ -361,10 +361,6 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-# ROMS/DLLS
-roms/
-SDL2.dll
-
 # Generated Files
 *.png
 *.bmp
