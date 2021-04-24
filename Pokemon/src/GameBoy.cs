@@ -95,11 +95,17 @@ namespace Pokemon
         public GameBoy(string biosFile, string romFile, SpeedupFlags speedupFlags = SpeedupFlags.None)
         {
             ROM = new ROM(romFile);
-            Debug.Assert(ROM.HeaderChecksumMatches(), "Cartridge header checksum mismatch!");
+
+            if (!ROM.HeaderChecksumMatches())
+                throw new GameboyException("Cartridge header checksum mismatch");
 
             Handle = Libgambatte.gambatte_create();
-            Debug.Assert(Libgambatte.gambatte_loadbios(Handle, biosFile, 0x900, 0x31672598) == 0, "Unable to load BIOS!");
-            Debug.Assert(Libgambatte.gambatte_load(Handle, romFile, LoadFlags.GbaFlag | LoadFlags.GcbMode | LoadFlags.ReadOnlySav) == 0, "Unable to load ROM!");
+
+            if (Libgambatte.gambatte_loadbios(Handle, biosFile, 0x900, 0x31672598) != 0)
+                throw new GameboyException("Unable to load BIOS");
+
+            if (Libgambatte.gambatte_load(Handle, romFile, LoadFlags.GbaFlag | LoadFlags.GcbMode | LoadFlags.ReadOnlySav) != 0)
+                throw new GameboyException("Unable to load ROM");
 
             VideoBuffer = new byte[160 * 144 * 4];
             AudioBuffer = new byte[(SamplesPerFrame + 2064) * 2 * 2]; // Stereo 16-bit samples
@@ -108,11 +114,12 @@ namespace Pokemon
             Libgambatte.gambatte_setinputgetter(Handle, InputGetter);
 
             string symPath = "symfiles/" + Path.GetFileNameWithoutExtension(romFile) + ".sym";
-            if (File.Exists(symPath))
-            {
-                SYM = new SYM(symPath);
-                ROM.Symbols = SYM;
-            }
+
+            if (!File.Exists(symPath))
+                throw new GameboyException("Unable to load symbols");
+
+            SYM = new SYM(symPath);
+            ROM.Symbols = SYM;
 
             SetSpeedupFlags(speedupFlags);
             StateSize = Libgambatte.gambatte_savestate(Handle, null, 160, null);
@@ -340,6 +347,15 @@ namespace Pokemon
         }
     }
 
+    public class GameboyException : Exception
+    {
+        public GameboyException() { }
+
+        public GameboyException(string message) : base(message) { }
+
+        public GameboyException(string message, Exception inner) : base(message, inner) { }
+    }
+
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate Joypad InputGetter();
 
@@ -411,5 +427,5 @@ namespace Pokemon
 
         [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
         public static extern void gambatte_setspeedupflags(IntPtr gb, SpeedupFlags falgs);
-    } 
+    }
 }
