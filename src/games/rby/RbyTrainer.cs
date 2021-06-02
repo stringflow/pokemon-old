@@ -44,7 +44,8 @@ public class RbyTrainer : RbySprite {
         get {
             List<RbyTile> tiles = new List<RbyTile>();
             RbyTile current = Map[X, Y];
-            for(int i = 0; i < SightRange; i++) {
+            int range = SightRange;
+            for(int i = 0; i < range; i++) {
                 RbyTile next = current.Neighbor(Direction);
                 if(next == null) break;
                 tiles.Add(next);
@@ -61,10 +62,20 @@ public class RbyTrainer : RbySprite {
         int textPointer = Map.Bank << 16 | Map.TextPointer + (TextId - 1) * 2;
         int scriptPointer = Map.Bank << 16 | Map.Game.ROM.u16le(textPointer);
         int headerPointer = Map.Bank << 16 | Map.Game.ROM.u16le(scriptPointer + 2);
+
+        if(baseSprite.Map.Id == 166 || TrainerClass == null || TrainerClass.Name.Contains("RIVAL")) {
+            return;
+        }
+
         ByteStream header = Map.Game.ROM.From(headerPointer);
         EventFlagBit = header.u8();
         SightRange = (byte) (header.u8() >> 4);
         EventFlagAddress = header.u16le();
+
+        if(EventFlagBit >= 8) {
+            EventFlagBit -= 8;
+            EventFlagAddress++;
+        }
     }
 
     public bool IsDefeated(GameBoy gb) {

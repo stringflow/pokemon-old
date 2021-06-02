@@ -75,7 +75,7 @@ public class RbyTile : Tile<RbyTile> {
         }
 
         // TODO: Don't always assume on land.
-        if(Map.Tileset.TilePairCollisionsLand.Contains(new RbyTilePairCollision { Tile1 = from.Collision, Tile2 = Collision })) return false;
+        if(Map.Tileset.TilePairCollisionsLand.Contains(from.Collision << 8 | Collision)) return false;
 
         return permissions.IsAllowed(Collision);
     }

@@ -9,6 +9,11 @@ public class RbyItem : ROMObject {
         Name = name;
         Id = id;
         ExecutionPointer = 0x3 << 16 | game.ROM.u16le(game.SYM["ItemUsePtrTable"] + (byte) (id - 1) * 2);
+        if(id >= 0xC4) {
+            ExecutionPointer = game.SYM["ItemUseTMHM"];
+        }
+
+
         if(game.SYM.Contains(ExecutionPointer)) ExecutionPointerLabel = game.SYM[ExecutionPointer];
     }
 }

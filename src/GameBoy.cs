@@ -76,6 +76,57 @@ public partial class GameBoy : IDisposable {
     // Get Reg and flag values.
     public Registers Registers {
         get { Libgambatte.gambatte_getregs(Handle, out Registers regs); return regs; }
+        set { Libgambatte.gambatte_setregs(Handle, value); }
+    }
+
+    public int PC {
+        get { return Registers.PC; }
+        set { Registers regs = Registers; regs.PC = value; Registers = regs; }
+    }
+
+    public int SP {
+        get { return Registers.SP; }
+        set { Registers regs = Registers; regs.SP = value; Registers = regs; }
+    }
+
+    public int A {
+        get { return Registers.A; }
+        set { Registers regs = Registers; regs.A = value; Registers = regs; }
+    }
+
+    public int B {
+        get { return Registers.B; }
+        set { Registers regs = Registers; regs.B = value; Registers = regs; }
+    }
+
+    public int C {
+        get { return Registers.C; }
+        set { Registers regs = Registers; regs.C = value; Registers = regs; }
+    }
+
+    public int D {
+        get { return Registers.D; }
+        set { Registers regs = Registers; regs.D = value; Registers = regs; }
+    }
+
+    public int E {
+        get { return Registers.E; }
+        set { Registers regs = Registers; regs.E = value; Registers = regs; }
+    }
+
+    public int F {
+        get { return Registers.F; }
+        set { Registers regs = Registers; regs.F = value; Registers = regs; }
+    }
+
+    public int H {
+        get { return Registers.H; }
+        set { Registers regs = Registers; regs.H = value; Registers = regs; }
+    }
+
+    public int L {
+        get { return Registers.L; }
+        set { Registers regs = Registers; regs.L = value; Registers = regs; }
     }
 
     public int DividerState {
@@ -263,7 +314,7 @@ public partial class GameBoy : IDisposable {
 
     public void PlayBizhawkInputLog(string[] lines) {
         Joypad[] joypadFlags = { Joypad.Up, Joypad.Down, Joypad.Left, Joypad.Right, Joypad.Start, Joypad.Select, Joypad.B, Joypad.A };
-        lines = lines.Subarray(2, lines.Length - 3);
+        lines = lines.Subarray(2, lines.Length - 4);
         for(int i = 0; i < lines.Length; i++) {
             if(lines[i][9] != '.') {
                 HardReset(false);

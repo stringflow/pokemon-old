@@ -19,7 +19,7 @@ public class RbyData {
         Charmap = new Charmap("A B C D E F G H I J K L M N O P " +
                               "Q R S T U V W X Y Z ( ) : ; [ ] " +
                               "a b c d e f g h i j k l m n o p " +
-                              "q r s t u v w x y z é 'd 'l 's 't 'v " +
+                              "q r s t u v w x y z E 'd 'l 's 't 'v " +
                               "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ " +
                               "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ " +
                               "' PK MN - 'r 'm ? ! . _ _ _ _ _ _ M " +
@@ -219,12 +219,14 @@ public partial class Rby : GameBoy {
     private void LoadTilePairCollisions() {
         byte[] data = ROM.From("TilePairCollisionsLand").Until(0xff);
         for(int i = 0; i < data.Length - 1; i += 3) {
-            Tilesets[data[i]].TilePairCollisionsLand.Add(new RbyTilePairCollision { Tile1 = data[i + 1], Tile2 = data[i + 2] });
+            Tilesets[data[i]].TilePairCollisionsLand.Add(data[i + 1] << 8 | data[i + 2]);
+            Tilesets[data[i]].TilePairCollisionsLand.Add(data[i + 2] << 8 | data[i + 1]);
         }
 
         data = ROM.From("TilePairCollisionsWater").Until(0xff);
         for(int i = 0; i < data.Length - 1; i += 3) {
-            Tilesets[data[i]].TilePairCollisionsWater.Add(new RbyTilePairCollision { Tile1 = data[i + 1], Tile2 = data[i + 2] });
+            Tilesets[data[i]].TilePairCollisionsWater.Add(data[i + 1] << 8 | data[i + 2]);
+            Tilesets[data[i]].TilePairCollisionsWater.Add(data[i + 2] << 8 | data[i + 1]);
         }
     }
 

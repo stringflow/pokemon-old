@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 public class RbyPokemon {
 
@@ -82,6 +83,10 @@ public class RbyPokemon {
         }
     }
 
+    public int NumMoves {
+        get { return Moves.Where(m => m != null).Count(); }
+    }
+
     public RbyPokemon() { }
     public RbyPokemon(RbySpecies species, byte level) : this(species, level, 0x9888) { }
     public RbyPokemon(RbySpecies species, byte level, ushort dvs) {
@@ -107,7 +112,6 @@ public class RbyPokemon {
         UnmodifiedSpeed = CalculateStat(DVs.Speed, Species.BaseSpeed, SpeedExp, 5);
         UnmodifiedSpecial = CalculateStat(DVs.Special, Species.BaseSpecial, SpecialExp, 5);
         if(MaxHP == 0) MaxHP = UnmodifiedMaxHP;
-        if(HP == 0) HP = UnmodifiedMaxHP;
         if(Attack == 0) Attack = UnmodifiedAttack;
         if(Defense == 0) Defense = UnmodifiedDefense;
         if(Speed == 0) Speed = UnmodifiedSpeed;

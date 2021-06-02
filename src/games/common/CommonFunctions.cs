@@ -28,19 +28,23 @@ public partial class GameBoy {
         return Execute(Array.ConvertAll(path.Split(" "), e => e.ToAction()));
     }
 
-    public void ClearText(Joypad holdInput = Joypad.None) {
-        ClearText(holdInput, int.MaxValue);
+    public int ClearText(Joypad holdInput = Joypad.None) {
+        return ClearText(holdInput, int.MaxValue);
     }
 
-    public void ClearText(int numTextBoxes) {
-        ClearText(Joypad.None, numTextBoxes);
+    public int ClearText(int numTextBoxes) {
+        return ClearText(Joypad.None, numTextBoxes);
     }
 
-    public virtual void ClearText(Joypad holdInput, int numTextBoxes) {
+    public int ClearTextUntil(Joypad holdInput, params int[] additionalBreakpoints) {
+        return ClearText(holdInput, int.MaxValue, additionalBreakpoints);
+    }
+
+    public virtual int ClearText(Joypad holdInput, int numTextBoxes, params int[] additionalBreakpoints) {
         throw new NotImplementedException();
     }
 
-    public virtual int WalkTo(int x, int y) {
+    public virtual int MoveTo(int x, int y) {
         throw new NotImplementedException();
     }
 
@@ -54,7 +58,7 @@ public partial class GameBoy {
     }
 
     public (Joypad Input, int Amount) CalcScroll(int target, int current, int max, bool wrapping) {
-        if((CpuRead(0xfff6 + (this is Yellow ? 4 : 0)) & 0x02) > 0) {
+        if((CpuRead(0xfff6 + (this is Yellow ? 4 : 0)) & 0x02) > 0 && CpuReadBE<ushort>("wEnemyMonHP") > 0) {
             // The move selection is its own thing for some reason, so the input values are wrong have to be adjusted.
             current--;
             max = CpuRead("wNumMovesMinusOne");

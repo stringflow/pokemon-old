@@ -8,6 +8,7 @@ public partial class Rby {
     }
 
     public override void Press(params Joypad[] joypads) {
+        while((CpuRead("wd730") & 0x20) > 0) AdvanceFrame();
         foreach(Joypad joypad in joypads) {
             RunUntil("_Joypad");
             Inject(joypad);
@@ -36,7 +37,7 @@ public partial class Rby {
                         }
 
                         ret = RunUntil("JoypadOverworld");
-                    } while((CpuRead("wd736") & 0x42) != 0 && CpuRead("wJoyIgnore") < 0xfc);
+                    } while(((CpuRead("wd736") & 0x40) != 0) || ((CpuRead("wd736") & 0x2) != 0 && CpuRead("wJoyIgnore") > 0xfc) || ((CpuRead("wd730") & 0x80) > 0));
                     break;
                 case Action.A:
                     Inject(Joypad.A);
@@ -49,11 +50,6 @@ public partial class Rby {
                     break;
                 case Action.PokedexFlash:
                     Press(Joypad.Start, Joypad.A, Joypad.B, Joypad.Start);
-                    ret = RunUntil("JoypadOverworld");
-                    break;
-                case Action.Delay:
-                    Inject(Joypad.None);
-                    RunUntil("OverworldLoop");
                     ret = RunUntil("JoypadOverworld");
                     break;
                 default:
@@ -71,7 +67,11 @@ public partial class Rby {
         RunUntil("JoypadOverworld");
     }
 
-    public override void ClearText(Joypad holdInput, int numTextBoxes) {
+    public override int ClearText(Joypad holdInput, int numTextBoxes, params int[] addrs) {
+        int[] breakpoints = new int[addrs.Length + 1];
+        breakpoints[0] = SYM["Joypad"];
+        Array.Copy(addrs, 0, breakpoints, 1, addrs.Length);
+
         int[] textAddrs = {
             SYM["PrintLetterDelay.checkButtons"] + 0x3,
             SYM["WaitForTextScrollButtonPress.skipAnimation"] + 0xa,
@@ -85,9 +85,16 @@ public partial class Rby {
 
         int clearCounter = 0;
 
+        int ret = 0;
+
         while(true && clearCounter < numTextBoxes) {
             // Hold the specified input until the joypad state is polled.
-            Hold(holdInput, "Joypad");
+            ret = Hold(holdInput, breakpoints);
+
+            if(ret != SYM["Joypad"]) {
+                break;
+            }
+
             // Read the current position of the stack.
             stackPointer = Registers.SP;
             // When the 'Joypad' routine is called, the address of the following instruction is pushed onto the stack.
@@ -103,10 +110,11 @@ public partial class Rby {
             // If the call did not originate from any of the text handling routines, it may be time to break out of the loop.
             if(Array.IndexOf(textAddrs, cameFrom) == -1) {
                 // If the call originated from 'JoypadOverworld', additional criteria have to be met to warrent a break.
-                if(cameFrom == SYM["JoypadOverworld"] + 0xd && (CpuRead("wJoyIgnore") > 0xfb ||    // (1) More Buttons than just A and B have to be allowed,
-                                                                (CpuRead("wd730") & 0xa1) > 0)) {  // (2) No sprite can currently be moved by a script,
-                                                                                                   // (3) Joypad input must not be ignored,
-                                                                                                   // (4) Joypad states can not be simulated (player is in a cutscene)
+                if(cameFrom == SYM["JoypadOverworld"] + 0xd && (CpuRead("wJoyIgnore") > 0xfb ||      // (1) More Buttons than just A and B have to be allowed,
+                                                               (CpuRead("wd730") & 0xa1) > 0 ||      // (2) No sprite can currently be moved by a script,
+                                                               (CpuRead("wFlags_D733") & 0x8) > 0 || // (3) Joypad input must not be ignored,
+                                                                CpuRead("wCurOpponent") > 0)) {      // (4) Joypad states can not be simulated (player is in a cutscene)
+                                                                                                     // (5) The player must not be currently engaged by a trainer
                     AdvanceFrame();
                 } else {
                     // If it is time to break out of the loop, run for 1 sample to allow for continuous calls of this function.
@@ -131,9 +139,11 @@ public partial class Rby {
                 clearCounter++;
             }
         }
+
+        return ret;
     }
 
-    public override int WalkTo(int targetX, int targetY) {
+    public override int MoveTo(int targetX, int targetY) {
         RbyMap map = Map;
         RbyTile current = map[XCoord, YCoord];
         RbyTile target = map[targetX, targetY];

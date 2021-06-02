@@ -150,6 +150,7 @@ public class RbyIntroSequence : List<RbyStrat> {
     }
 
     public void ExecuteUntilIGT(Rby gb) {
+        gb.HardReset(false);
         int lastTitleSkip = LastIndexOf(RbyStrat.TitleSkip);
         for(int i = 0; i <= lastTitleSkip; i++) {
             this[i].Execute(gb);
@@ -211,7 +212,6 @@ public class RbyIntroSequence : List<RbyStrat> {
                 RbyIntroSequence intro = i.Key;
                 ushort expectedTid = i.Value;
                 Console.Write(gameName + "_" + intro.ToString() + " ... ");
-                gb.HardReset();
                 intro.Execute(gb);
                 gb.RunUntil("PrintLetterDelay");
                 ushort readTid = gb.CpuReadBE<ushort>("wPlayerID");

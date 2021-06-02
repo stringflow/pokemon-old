@@ -39,9 +39,9 @@ public partial class Gsc {
                     Joypad input = (Joypad) action;
                     RunUntil("OWPlayerInput");
                     InjectOverworld(input);
-                    ret = Hold(input, "CountStep", "ChooseWildEncounter.startwildbattle", "PrintLetterDelay.checkjoypad", "DoPlayerMovement.BumpSound");
+                    ret = Hold(input, "CountStep", "RandomEncounter.ok", "PrintLetterDelay.checkjoypad", "DoPlayerMovement.BumpSound");
                     if(ret == SYM["CountStep"]) {
-                        ret = Hold(input, "OWPlayerInput", "ChooseWildEncounter.startwildbattle");
+                        ret = Hold(input, "OWPlayerInput", "RandomEncounter.ok");
                     }
 
                     if(ret != SYM["OWPlayerInput"]) {
@@ -57,6 +57,11 @@ public partial class Gsc {
                     Inject(Joypad.B);
                     ret = Hold(Joypad.B, "OWPlayerInput");
                     break;
+                case Action.Select:
+                    InjectOverworld(Joypad.Select);
+                    AdvanceFrame(Joypad.Select);
+                    ret = Hold(Joypad.Select, "OWPlayerInput");
+                    break;
                 default:
                     break;
             }
@@ -65,7 +70,7 @@ public partial class Gsc {
         return ret;
     }
 
-    public override void ClearText(Joypad holdInput, int numTextBoxes) {
+    public override int ClearText(Joypad holdInput, int numTextBoxes, params int[] additionalBreakpoints) {
         // A list of routines that prompt the user to advance the text with either A or B.
         int[] textAdvanceAddrs = {
             SYM["PromptButton.input_wait_loop"] + 0x6,
@@ -78,9 +83,10 @@ public partial class Gsc {
 
         int clearCounter = 0;
 
+        int ret = 0;
         while(true && clearCounter < numTextBoxes) {
             // Hold the specified input until the joypad state is polled.
-            Hold(holdInput, "GetJoypad");
+            ret = Hold(holdInput, "GetJoypad");
 
             // Read the current position of the stack.
             stackPointer = Registers.SP;
@@ -115,9 +121,11 @@ public partial class Gsc {
                 }
             }
         }
+
+        return ret;
     }
 
-    public override int WalkTo(int targetX, int targetY) {
+    public override int MoveTo(int targetX, int targetY) {
         GscMap map = Map;
         GscTile current = Tile;
         GscTile target = map[targetX, targetY];

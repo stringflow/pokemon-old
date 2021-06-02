@@ -256,7 +256,7 @@ public class RedBlue : Rby {
 
     public override void ChooseMenuItem(int target) {
         RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
-        MenuScroll(target, Joypad.A, CpuReadLE<ushort>(Registers.SP + 6) != SYM["RedisplayStartMenu.loop"] + 0x3);
+        MenuScroll(target, Joypad.A, CpuReadLE<ushort>(Registers.SP + 6) != SYM["RedisplayStartMenu.loop"] + 0x3 && CpuReadLE<ushort>(Registers.SP + 6) != (SYM["SelectMenuItem.select"] & 0xffff) + 0x8);
     }
 
     public override void SelectMenuItem(int target) {

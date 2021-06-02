@@ -38,6 +38,54 @@ public partial class Rby {
         return ReadPartyStruct(From(SYM["wPartyMons"] + index * (SYM["wPartyMon2"] - SYM["wPartyMon1"])));
     }
 
+    public int PartySize {
+        get { return CpuRead("wPartyCount"); }
+    }
+
+    public RbyPokemon[] Party {
+        get {
+            RbyPokemon[] party = new RbyPokemon[PartySize];
+            for(int i = 0; i < party.Length; i++) {
+                party[i] = PartyMon(i);
+            }
+            return party;
+        }
+    }
+
+    public RbyPokemon EnemyMon1 {
+        get { return ReadPartyStruct(From("wEnemyMon1")); }
+    }
+
+    public RbyPokemon EnemyMon2 {
+        get { return ReadPartyStruct(From("wEnemyMon2")); }
+    }
+
+    public RbyPokemon EnemyMon3 {
+        get { return ReadPartyStruct(From("wEnemyMon3")); }
+    }
+
+    public RbyPokemon EnemyMon4 {
+        get { return ReadPartyStruct(From("wEnemyMon4")); }
+    }
+
+    public RbyPokemon EnemyMon5 {
+        get { return ReadPartyStruct(From("wEnemyMon5")); }
+    }
+
+    public RbyPokemon EnemyMon6 {
+        get { return ReadPartyStruct(From("wEnemyMon6")); }
+    }
+
+    public RbyPokemon[] EnemyParty {
+        get {
+            RbyPokemon[] enemyParty = new RbyPokemon[CpuRead("wEnemyPartyCount")];
+            for(int i = 0; i < enemyParty.Length; i++) {
+                enemyParty[i] = ReadPartyStruct(From(SYM["wEnemyMons"] + i * (SYM["wEnemyMon2"] - SYM["wEnemyMon1"])));
+            }
+            return enemyParty;
+        }
+    }
+
     public RbyPokemon BoxMon(int index) {
         return ReadPartyStruct(From(SYM["wBoxMons"] + index * (SYM["wBoxMon2"] - SYM["wBoxMon1"])));
     }
@@ -64,6 +112,10 @@ public partial class Rby {
 
     public byte YBlockCoord {
         get { return CpuRead("wYBlockCoord"); }
+    }
+
+    public bool InBattle {
+        get { return CpuRead("wIsInBattle") > 0; }
     }
 
     public RbyBag Bag {
