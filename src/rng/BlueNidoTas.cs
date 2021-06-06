@@ -26,6 +26,8 @@ public class BlueNidoTas : RedBlueForce {
             If that state already exists, the block of code will be skipped.
                 Parameter #1: the name of the segment [the save state file is named after this string]
                 Parameter #2: the block of code for this segment
+
+            You can force execution of all subsequent CacheState blocks by calling 'ClearCache();'
         */
         CacheState("rival1", () => {
             new RbyIntroSequence(RbyStrat.NoPal, RbyStrat.GfSkip, RbyStrat.Hop0, RbyStrat.TitleSkip, RbyStrat.NewGame).Execute(this);
