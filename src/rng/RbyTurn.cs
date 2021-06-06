@@ -13,8 +13,8 @@ public class RbyTurn {
         }
     }
 
-    public RbyTurn(string move, string pokemon) {
-        Move = move;
+    public RbyTurn(string item, string pokemon) {
+        Move = item;
         Pokemon = pokemon;
     }
 }

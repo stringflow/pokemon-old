@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 
@@ -29,7 +30,26 @@ public class RedBlueForce : RedBlue {
 
     public MenuType CurrentMenuType = MenuType.None;
 
+    private bool CacheCleared;
+    private string ChachedStatesDirectory;
+
     public RedBlueForce(string rom, bool speedup = false) : base(rom, speedup) {
+        ChachedStatesDirectory = "rng-cache/" + GetType().Name;
+        if(!Directory.Exists(ChachedStatesDirectory)) Directory.CreateDirectory(ChachedStatesDirectory);
+    }
+
+    public void CacheState(string name, System.Action fn) {
+        string state = ChachedStatesDirectory + "/" + name + ".gqs";
+        if(!CacheCleared && File.Exists(state)) {
+            LoadState(state);
+        } else {
+            fn();
+            SaveState(state);
+        }
+    }
+
+    public void ClearCache() {
+        CacheCleared = true;
     }
 
     public void ForceGiftDVs(ushort dvs) {
@@ -61,6 +81,13 @@ public class RedBlueForce : RedBlue {
         ClearText();
         BattleMenu(0, 1);
         ChooseListItem(Bag.IndexOf(ballname));
+        RunUntil(SYM["ItemUseBall.loop"] + 0x8);
+        A = 1;
+    }
+
+    public void ForceSafariYoloball() {
+        ClearText();
+        MenuPress(Joypad.A);
         RunUntil(SYM["ItemUseBall.loop"] + 0x8);
         A = 1;
     }
@@ -122,13 +149,19 @@ public class RedBlueForce : RedBlue {
     }
 
     private void ForceTurnInternal(RbyTurn turn) {
+        int textscroll = SYM["ManualTextScroll"];
+        int pause = SYM["TextCommand_PAUSE"];
+        int[] textaddrs = { textscroll, pause };
+
         int crit = SYM["CriticalHitTest.SkipHighCritical"] + 0x3;
         int accuracy = SYM["MoveHitTest.doAccuracyCheck"] + 0x3;
         int damageRoll = SYM["RandomizeDamage.loop"] + 0x8;
-        int modifierDown = SYM["StatModifierDownEffect.statModifierDownEffect"] + 0xe;
         int ai = SYM["TrainerAI.getpointer"] + 0x6;
+        int opponentModifierDownAccuracy = SYM["StatModifierDownEffect"] + 0x21;
+        int modifierDown = SYM["StatModifierDownEffect.statModifierDownEffect"] + 0xe;
         int freezeBurnParalyze = SYM["FreezeBurnParalyzeEffect.next2"] + 0x4;
         int poison = SYM["PoisonEffect.sideEffectTest"] + 0x3;
+        int flinch = SYM["FlinchSideEffect.gotEffectChance"] + 0x3;
         int playerConfusion = SYM["CheckPlayerStatusConditions.IsConfused"] + 0x12;
         int enemyConfusion = SYM["CheckEnemyStatusConditions.isConfused"] + 0x12;
         int thrash = SYM["ThrashPetalDanceEffect.thrashPetalDanceEffect"] + 0x5;
@@ -142,7 +175,7 @@ public class RedBlueForce : RedBlue {
 
         int ret;
         do {
-            while((ret = RunUntil(crit, accuracy, damageRoll, modifierDown, ai, freezeBurnParalyze, poison, playerConfusion, enemyConfusion, thrash, psywave, playerTurnDone1, playerTurnDone2, playerTurnDone3, enemyTurnDone1, enemyTurnDone2, enemyTurnDone3, SYM["ManualTextScroll"])) == SYM["ManualTextScroll"]) {
+            while(Array.IndexOf(textaddrs, ret = RunUntil(crit, accuracy, damageRoll, ai, opponentModifierDownAccuracy, modifierDown, freezeBurnParalyze, poison, flinch, playerConfusion, enemyConfusion, thrash, psywave, playerTurnDone1, playerTurnDone2, playerTurnDone3, enemyTurnDone1, enemyTurnDone2, enemyTurnDone3, textscroll, pause)) != -1) {
                 Joypad joypad = (Joypad) CpuRead("hJoyLast");
                 if(joypad == Joypad.None) joypad = Joypad.A;
                 joypad ^= (Joypad.A | Joypad.B);
@@ -161,7 +194,9 @@ public class RedBlueForce : RedBlue {
                 A = 216 + roll;
             } else if(ret == ai) {
                 A = 0xff; // all AI is ignored for now
-            } else if(ret == freezeBurnParalyze || ret == poison || ret == modifierDown) {
+            } else if(ret == opponentModifierDownAccuracy) {
+                A = (turn.Flags & Miss) != 0 ? 0x00 : 0xff;
+            } else if(ret == freezeBurnParalyze || ret == poison || ret == modifierDown || ret == flinch) {
                 A = (turn.Flags & Effect) != 0 ? 0x00 : 0xff;
             } else if(ret == playerConfusion || ret == enemyConfusion) {
                 A = (turn.Flags & Hitself) > 0 ? 0xff : 0x00;
@@ -701,9 +736,13 @@ public class RedBlueForce : RedBlue {
         return ret;
     }
 
-    // FAST   MEDIUM   SLOW     0   1   2
-    // ON              OFF      0       1
-    // SHIFT           SET      0       1
+    public new void PickupItem() {
+        CloseMenu();
+        Inject(Joypad.A);
+        Hold(Joypad.A, SYM["PlaySound"]);
+        RunUntil("JoypadOverworld");
+    }
+
     public void SetOptions(int textSpeed, int animations, int battleStyle) {
         OpenOptions();
         byte options = CpuRead("wOptions");
@@ -967,9 +1006,16 @@ public class RedBlueForce : RedBlue {
     }
 
     public void TeachLevelUpMove(int slot) {
-        MenuPress(Joypad.A);
+        Yes();
         ClearText();
         ChooseMenuItem(slot);
+        ClearText();
+    }
+
+    public void SkipLevelUpMove() {
+        No();
+        ClearText();
+        Yes();
         ClearText();
     }
 

@@ -1,6 +1,7 @@
 # Pokemon
 
-A work-in-progress project of botting/datamining tools for the generation 1 and 2 games of the Pokemon series.
+A work-in-progress libgambatte wrapper designed for the generation 1 and 2 games of the Pokemon series.  
+Mainly used for bruteforce searching of RTA rng manipulations and theory TASing for now.
 
 
 # Build Instructions (64-bit only for now)

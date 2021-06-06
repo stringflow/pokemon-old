@@ -23,3 +23,4 @@ SDL2.dll
 *.bin
 *.gqs
 movies/*
+rng-cache/*
