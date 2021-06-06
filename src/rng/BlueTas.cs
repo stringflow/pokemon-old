@@ -13,6 +13,13 @@ public class BlueTas : RedBlueForce {
         Record("blue-tas");
         //Show();
 
+        //Note: you may start after the playback of an existing bk2:
+        /*
+            Parameter #1: file path to the bk2 file
+            Parameter #2: frame count to playback up to [Optional, if omitted the entire bk2 will be played back]
+        */
+        //PlayBizhawkMovie("example.bk2", 12345);
+
         new RbyIntroSequence(RbyStrat.NoPal, RbyStrat.GfSkip, RbyStrat.Hop0, RbyStrat.TitleSkip, RbyStrat.NewGame).Execute(this);
 
         /*

@@ -300,22 +300,22 @@ public partial class GameBoy : IDisposable {
         Scene.AddComponent(new RecordingComponent(movie));
     }
 
-    public void PlayBizhawkMovie(string bk2File) {
+    public void PlayBizhawkMovie(string bk2File, int frameCount = int.MaxValue) {
         using(FileStream bk2Stream = File.OpenRead(bk2File))
         using(ZipArchive zip = new ZipArchive(bk2Stream, ZipArchiveMode.Read))
         using(StreamReader bk2Reader = new StreamReader(zip.GetEntry("Input Log.txt").Open())) {
-            PlayBizhawkInputLog(bk2Reader.ReadToEnd().Split('\n'));
+            PlayBizhawkInputLog(bk2Reader.ReadToEnd().Split('\n'), frameCount);
         }
     }
 
-    public void PlayBizhawkInputLog(string fileName) {
-        PlayBizhawkInputLog(File.ReadAllLines(fileName));
+    public void PlayBizhawkInputLog(string fileName, int frameCount = int.MaxValue) {
+        PlayBizhawkInputLog(File.ReadAllLines(fileName), frameCount);
     }
 
-    public void PlayBizhawkInputLog(string[] lines) {
+    public void PlayBizhawkInputLog(string[] lines, int frameCount = int.MaxValue) {
         Joypad[] joypadFlags = { Joypad.Up, Joypad.Down, Joypad.Left, Joypad.Right, Joypad.Start, Joypad.Select, Joypad.B, Joypad.A };
         lines = lines.Subarray(2, lines.Length - 4);
-        for(int i = 0; i < lines.Length; i++) {
+        for(int i = 0; i < lines.Length && i < frameCount; i++) {
             if(lines[i][9] != '.') {
                 HardReset(false);
             }
