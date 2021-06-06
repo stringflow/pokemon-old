@@ -167,13 +167,14 @@ public class ByteStream : MemoryStream {
         Seek(amount, SeekOrigin.Current);
     }
 
-    // Reads until the value of 'terminator' is encountered. Returns all bytes read including the terminator.
-    public byte[] Until(byte terminator) {
+    // Reads until the value of 'terminator' is encountered.
+    public byte[] Until(byte terminator, bool includeTerminator = true) {
         int length = 0;
         do {
             length++;
         } while(ReadByte() != terminator);
         Seek(-length, SeekOrigin.Current);
+        if(!includeTerminator) length--;
         byte[] bytes = new byte[length];
         Read(bytes);
         return bytes;

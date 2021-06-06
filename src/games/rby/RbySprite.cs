@@ -19,6 +19,12 @@ public class RbySprite {
     public Action Direction;
     public byte Range;
 
+    public bool CanBeMissable;
+    public int MissableAddress;
+    public int MissableBit;
+
+    public RbySprite() { }
+
     // Constructor to call from subclasses (RbyTrainer, RbyItemBall)
     public RbySprite(RbySprite baseSprite, ByteStream data) {
         Map = baseSprite.Map;

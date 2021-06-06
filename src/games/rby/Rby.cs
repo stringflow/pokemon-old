@@ -13,6 +13,7 @@ public class RbyData {
     public List<RbyLedge> Ledges = new List<RbyLedge>();
     public DataList<RbyTileset> Tilesets = new DataList<RbyTileset>();
     public DataList<RbyMap> Maps = new DataList<RbyMap>();
+    public Dictionary<Action, byte[]> DirectionalWarpTiles = new Dictionary<Action, byte[]>();
 
     public RbyData() {
         // See https://github.com/pret/pokered/blob/master/charmap.asm
@@ -91,6 +92,10 @@ public partial class Rby : GameBoy {
         get { return Data.Maps; }
     }
 
+    public Dictionary<Action, byte[]> DirectionalWarpTiles {
+        get { return Data.DirectionalWarpTiles; }
+    }
+
     public Rby(string rom, SpeedupFlags speedupFlags = SpeedupFlags.None) : base("roms/gbc_bios.bin", rom, speedupFlags) {
         // If a ROM with the same checksum has already been parsed, the data will be shared.
         if(ParsedROMs.ContainsKey(ROM.GlobalChecksum)) {
@@ -107,6 +112,8 @@ public partial class Rby : GameBoy {
             LoadTilesets();
             LoadTilePairCollisions();
             LoadMaps();
+            LoadMissableSprites();
+            LoadDirectionalWarpTiles();
             ParsedROMs[ROM.GlobalChecksum] = Data;
         }
 
@@ -114,8 +121,8 @@ public partial class Rby : GameBoy {
     }
 
     private void LoadTypeEffectivenessTable() {
-        byte[] data = ROM.From("TypeEffects").Until(0xff);
-        for(int i = 0; i < data.Length - 1; i += 3) {
+        byte[] data = ROM.From("TypeEffects").Until(0xff, false);
+        for(int i = 0; i < data.Length; i += 3) {
             RbyType type1 = (RbyType) data[i + 0];
             RbyType type2 = (RbyType) data[i + 1];
             byte effectiveness = data[i + 2];
@@ -217,22 +224,22 @@ public partial class Rby : GameBoy {
     }
 
     private void LoadTilePairCollisions() {
-        byte[] data = ROM.From("TilePairCollisionsLand").Until(0xff);
-        for(int i = 0; i < data.Length - 1; i += 3) {
+        byte[] data = ROM.From("TilePairCollisionsLand").Until(0xff, false);
+        for(int i = 0; i < data.Length; i += 3) {
             Tilesets[data[i]].TilePairCollisionsLand.Add(data[i + 1] << 8 | data[i + 2]);
             Tilesets[data[i]].TilePairCollisionsLand.Add(data[i + 2] << 8 | data[i + 1]);
         }
 
-        data = ROM.From("TilePairCollisionsWater").Until(0xff);
-        for(int i = 0; i < data.Length - 1; i += 3) {
+        data = ROM.From("TilePairCollisionsWater").Until(0xff, false);
+        for(int i = 0; i < data.Length; i += 3) {
             Tilesets[data[i]].TilePairCollisionsWater.Add(data[i + 1] << 8 | data[i + 2]);
             Tilesets[data[i]].TilePairCollisionsWater.Add(data[i + 2] << 8 | data[i + 1]);
         }
     }
 
     private void LoadLedges() {
-        byte[] data = ROM.From("LedgeTiles").Until(0xff);
-        for(int i = 0; i < data.Length - 1; i += 4) {
+        byte[] data = ROM.From("LedgeTiles").Until(0xff, false);
+        for(int i = 0; i < data.Length; i += 4) {
             Ledges.Add(new RbyLedge() {
                 Source = data[i + 1],
                 Ledge = data[i + 2],
@@ -252,6 +259,34 @@ public partial class Rby : GameBoy {
                 if(addressLabel.EndsWith("_h")) Maps.Add(new RbyMap(this, addressLabel.Substring(0, addressLabel.IndexOf("_h")), i, ROM.From(headerAddress)));
             }
         }
+    }
+
+    private void LoadMissableSprites() {
+        ByteStream data = ROM.From("MissableObjects");
+        for(int id = 0; ; id++) {
+            byte mapId = data.u8();
+            byte spriteId = data.u8();
+            byte state = data.u8();
+
+            if(mapId == 0xff) break;
+
+            RbyMap map = Maps[mapId];
+            if(map == null) continue;
+
+            RbySprite sprite = map.Sprites[spriteId - 1];
+            if(sprite == null) continue;
+
+            sprite.CanBeMissable = true;
+            sprite.MissableAddress = SYM["wMissableObjectFlags"] + id / 8;
+            sprite.MissableBit = id % 8;
+        }
+    }
+
+    private void LoadDirectionalWarpTiles() {
+        DirectionalWarpTiles[Action.Down] = ROM.From("WarpTileListPointers.FacingDownWarpTiles").Until(0xff, false);
+        DirectionalWarpTiles[Action.Up] = ROM.From("WarpTileListPointers.FacingUpWarpTiles").Until(0xff, false);
+        DirectionalWarpTiles[Action.Left] = ROM.From("WarpTileListPointers.FacingLeftWarpTiles").Until(0xff, false);
+        DirectionalWarpTiles[Action.Right] = ROM.From("WarpTileListPointers.FacingRightWarpTiles").Until(0xff, false);
     }
 
     public override Font ReadFont() {

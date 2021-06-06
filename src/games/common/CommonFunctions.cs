@@ -44,7 +44,7 @@ public partial class GameBoy {
         throw new NotImplementedException();
     }
 
-    public virtual int MoveTo(int x, int y) {
+    public virtual int MoveTo(int x, int y, Action preferredDirection = Action.None) {
         throw new NotImplementedException();
     }
 

@@ -135,7 +135,7 @@ public partial class Rby {
                                                                             // (Joypad.A) 01 xor 11 = 10 (Joypad.B)
                                                                             // (Joypad.B) 10 xor 11 = 01 (Joypad.A)
                 Inject(advance);
-                AdvanceFrame(advance);
+                RunFor(1);
                 clearCounter++;
             }
         }
@@ -143,7 +143,7 @@ public partial class Rby {
         return ret;
     }
 
-    public override int MoveTo(int targetX, int targetY) {
+    public override int MoveTo(int targetX, int targetY, Action preferredDirection = Action.None) {
         RbyMap map = Map;
         RbyTile current = map[XCoord, YCoord];
         RbyTile target = map[targetX, targetY];

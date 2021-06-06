@@ -125,7 +125,7 @@ public partial class Gsc {
         return ret;
     }
 
-    public override int MoveTo(int targetX, int targetY) {
+    public override int MoveTo(int targetX, int targetY, Action preferredDirection = Action.None) {
         GscMap map = Map;
         GscTile current = Tile;
         GscTile target = map[targetX, targetY];

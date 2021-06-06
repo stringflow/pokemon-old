@@ -1,45 +1,88 @@
-using System;
-using System.Collections.Generic;
-using static RedBlueForce;
-
 public class BlueTas : RedBlueForce {
 
     // TODO:
     //  - TAS menu execution
     //  - TAS instant text execution (this is challenging)
-    //  - PickupItemAt?
+    //  - Better NPC support (being able to specify how they should move)
     //  - Automatic fly menus
     //  - Better pathfinding
-    //    > Make it take hidden sprites into account
-    //    > Make it take moved sprites into account
-    //    > TalkTo is implemented in not a very smart way, need to rethink how to do it
-    //    > Being able to specify which direction you want to talk to an npc from (ie dig rocket)
-    //    > https://gunnermaniac.com/pokeworld?local=149#3/1 current code talks from the right because it tries to avoid bonks at all cost, needs refactoring
-    //    > Directional warps
-    //  - Better NPC support (being able to specify how they should move)
-    //  - Auto de-surfing
+    //    > Make pathfinding consider turn frames (last moon room/post underground elixer house)
 
     public BlueTas() : base("roms/pokeblue.gbc", true) {
-        Record("blue-tas"); // NOTE: Record requires ffmpeg.exe to be in PATH, it will output to movies/video.mp4, movies/audio.mp3, stitch the two together and save to movies/blue-tas.mp4
+        // NOTE: Record requires ffmpeg.exe to be in PATH, it will output to movies/video.mp4, movies/audio.mp3, stitch the two together and save to movies/blue-tas.mp4
+        Record("blue-tas");
         //Show();
 
         new RbyIntroSequence(RbyStrat.NoPal, RbyStrat.GfSkip, RbyStrat.Hop0, RbyStrat.TitleSkip, RbyStrat.NewGame).Execute(this);
+
+        /*
+            ClearText clears all textboxes until user input is required.
+                Parameter #1: a button that is to be held while text is printing [Optional, if omitted no button will be held]
+                
+                Note #1: Textboxes will be cleared with the opposite of the specified hold button (if hold is 'A', 'B' will be used and vice versa)
+                Note #2: If text speed is not set to fast yet, you want to specify a hold button. You have to be mindful of the action after ClearText
+                         in order to avoid consecutive input lag. In the example below, ClearText will be interrupted by the menu that let's you choose between
+                         a new nickname or preset trainer names, which we want to select new nickname with the 'A' button. Because of that we want the final input
+                         from ClearText to be 'B'. The final input will be to clear the final textbox, therefore the held button of 'A' is chosen. (see note #1)
+        */
         ClearText(Joypad.A);
+        /*
+            Presses the specified buttons as soon as the input is polled from the game.
+            Multiple button presses can be specified and they will be executed in sequiental order.
+            In the example below:
+              Joypad.A - Hit 'A' on NEW NAME
+              Joypad.None - Skip 1 input read to respect consecutive input lag
+              Joypad.A - Hit 'A' on the nicknaming screen to select the character "A"
+              Joypad.Start - Confirm the nickname "A"
+        */
         Press(Joypad.A, Joypad.None, Joypad.A, Joypad.Start);
         ClearText(Joypad.A);
         Press(Joypad.A, Joypad.None, Joypad.A, Joypad.Start);
         ClearText(Joypad.A); // Journey begins!
 
+        /*
+            Sets the in-game options. Note: This function currently only works in the overworld, and will not work on the new-game-screen.
+            The parameters represent the x coordinates of the options you want to be set:
+                FAST   MEDIUM   SLOW  -   0   1   2
+                ON              OFF   -   0       1
+                SHIFT           SET   -   0       1
+            Therefore the parameters below will set FAST/OFF/SET.
+        */
         SetOptions(0, 1, 1);
 
+        /*
+            Moves to the specified coordinates via pathfinding.
+                Parameter #1: map name or map id [Optional, if not specified the current map is assumed]
+                Parameter #2: x coordinate
+                Parameter #3: y coordinate
+                Parameter #4: preferred facing direction after the movement [Optional, if not specified any facing direction may be used]
+            Therefore the parameters below will pathfind to https://gunnermaniac.com/pokeworld?local=0#10/1.
+        */
         MoveTo("PalletTown", 10, 1); // Oak cutscene
         ClearText();
 
+        /*
+            Pathfinds in such a way to face the specified tile (or NPC), then presses 'A' to interact, and calls 'ClearText'.
+                Parameter #1: map name or map id [Optional, if not specified the current map is assumed]
+                Parameter #2: x coordinate 
+                Parameter #3: y coordinate
+                Parameter #4: direction to talk from [Optional, if not specified any facing direction may be used]
+                Note: Coordinates must be of the tile you want to interact with, not the tile the player should end up at.
+            Therefore the parameters below will pathfind and then interact with https://gunnermaniac.com/pokeworld?local=40#7/3.
+        */
         TalkTo(7, 3);
-        Press(Joypad.A);
+        /*
+            Chooses Yes on Yes/No boxes.
+        */
+        Yes();
         ClearText();
-        Press(Joypad.A);
+        Yes();
         Press(Joypad.None, Joypad.A, Joypad.Start); // TODO: Nickname function?
+        /*
+            Modifies the RNG to produce the specified DVs when receiving a gift pokemon.
+            The DVs is a single 16-bit integer where every 4 bits represents one stat, in the order: Attack, Defense, Speed, Special.
+            Therefore the parameters below will produce 14 dv attack, 1 dv defense, 7 dv speed, and 8 dv special.
+        */
         ForceGiftDVs(0xe178);
         ClearText(); // Squirtle received
 
@@ -47,32 +90,62 @@ public class BlueTas : RedBlueForce {
         ClearText();
 
         // RIVAL1
+        /*
+            Modifies the RNG to produce the specified battle RNG.
+                Parameter #1: player's turn
+                Parameter #2: opponent's turn [Optional, may be omitted if the opponent will not get a turn]
+                Parameter #3: whether or not a speed tie should be won or lost [Optional, speed tie will be won if omitted]
+
+            For defining turns:
+                Parameter #1: name of the move *OR* name of the item that will be used
+                Parameter #2: Bitfield flags [Lower 6 bits will be the damage roll *OR* Psywave damage,
+                                              for the rest see https://github.com/stringflow/pokemon/blob/main/src/rng/RedBlueForce.cs#L18-L22]
+            
+            Notes:
+                - Thrash/Petal Dance will be 4 turns by default.
+                - If the opponent will not get a turn, but may use a priority move, the opponent's turn may still be omitted and a non-priority move will be forced.
+        */
         ForceTurn(new RbyTurn("TAIL WHIP"), new RbyTurn("GROWL", Miss));
         ForceTurn(new RbyTurn("TACKLE"), new RbyTurn("GROWL", Miss));
         ForceTurn(new RbyTurn("TACKLE"), new RbyTurn("GROWL", Miss));
         ForceTurn(new RbyTurn("TACKLE"));
 
         ClearText(); // sneaky joypad call
-        Map.Sprites.Remove(5, 10); // https://gunnermaniac.com/pokeworld?map=40#5/10
-        Map.Sprites.Remove(4, 3); // https://gunnermaniac.com/pokeworld?local=40#4/3
 
         MoveTo("ViridianCity", 29, 19);
         ClearText(); // Receive parcel
-        MoveTo("OaksLab", 4, 2);
-        Press(Joypad.Right, Joypad.A); // give parcel
-        ClearText();
+        TalkTo("OaksLab", 5, 2, Action.Right); // give parcel
         ClearText(); // sneaky joypad call
 
         TalkTo("ViridianMart", 1, 5);
+        /*
+            Buys the specified items and quantities from the currently open mart.
+            Item names should always be followed by quantities.
+            
+            For example: 
+                Buy("POKE BALL", 4, "ANTIDOTE", 2, "REPEL", 5);
+                Would buy 4 pokeballs, followed by 2 antidotes, followed by 5 repels.
+        */
         Buy("POKE BALL", 4);
 
         MoveTo("Route22", 33, 12);
+        /*
+            Modifies the RNG to produce a specified encounter.
+                Parameter #1: the action that should be executed prior to the encounter
+                Parameter #2: the index of the encounter slot that should appear [zero based, 0-9]
+                Parameter #3: the dvs of the encounter
+            Therefore the parameters below will produce a L3 Nidoran Male with 0xf6ef DVs after moving up.
+        */
         ForceEncounter(Action.Up, 8, 0xf6ef);
+        /*
+            Modifies the RNG to gurantee a yoloball catch.
+            NOTE: This function currently only works if the ball that is to be thrown in in slot 1 of the inventory.
+        */
         ForceYoloball();
         ClearText();
-        Press(Joypad.A, Joypad.None, Joypad.A, Joypad.Start); // nido nickname
+        Yes();
+        Press(Joypad.None, Joypad.A, Joypad.Start); // nido nickname
 
-        Maps["ViridianCity"].Sprites.Remove(18, 9); // https://gunnermaniac.com/pokeworld?local=1#18/9
         MoveTo("ViridianForest", 2, 21);
 
         // L5 PIKACHU
@@ -94,19 +167,22 @@ public class BlueTas : RedBlueForce {
         ClearText();
         ForceYoloball();
         ClearText();
-        Press(Joypad.B); // pidgey caught
+        No(); // pidgey caught
 
         // BROCK
         TalkTo(Maps["PewterGym"][4, 1]);
         ForceTurn(new RbyTurn("BUBBLE"), new RbyTurn("TACKLE", Miss));
-        ForceTurn(new RbyTurn("BUBBLE"), new RbyTurn("TACKLE", Miss));
-        ForceTurn(new RbyTurn("BUBBLE", Crit | 38), new RbyTurn("TACKLE", Miss));
+        ForceTurn(new RbyTurn("BUBBLE"));
+        ForceTurn(new RbyTurn("BUBBLE", Crit | 38), new RbyTurn("SCREECH", Miss));
         ForceTurn(new RbyTurn("BUBBLE"), new RbyTurn("TACKLE", Crit | 38));
         ChooseMenuItem(1);
         ClearText();
         ForceTurn(new RbyTurn("TACKLE"), new RbyTurn("TACKLE", 38));
 
         TalkTo("PewterMart", 1, 5);
+        /*
+            Works exactly like Buy.
+        */
         Sell("TM34", 1);
         Buy("ESCAPE ROPE", 7);
 
@@ -124,10 +200,10 @@ public class BlueTas : RedBlueForce {
 
         // ROUTE 3 TRAINER 2
         TalkTo(14, 4);
-        ForceTurn(new RbyTurn("HORN ATTACK", Crit), new RbyTurn("TAIL WHIP", Miss));
         ForceTurn(new RbyTurn("HORN ATTACK"), new RbyTurn("TAIL WHIP", Miss));
-        ForceTurn(new RbyTurn("HORN ATTACK", Crit), new RbyTurn("LEER", Miss));
-        ForceTurn(new RbyTurn("HORN ATTACK"));
+        ForceTurn(new RbyTurn("HORN ATTACK", Crit), new RbyTurn("TAIL WHIP", Miss));
+        ForceTurn(new RbyTurn("HORN ATTACK"), new RbyTurn("LEER", Miss));
+        ForceTurn(new RbyTurn("HORN ATTACK", Crit));
 
         // ROUTE 3 TRAINER 3
         TalkTo(19, 5);
@@ -145,8 +221,10 @@ public class BlueTas : RedBlueForce {
         ForceTurn(new RbyTurn("HORN ATTACK"), new RbyTurn("HARDEN"));
         ForceTurn(new RbyTurn("HORN ATTACK", Crit));
 
-        MoveTo("MtMoon1F", 2, 3);
-        PickupItem(); // moonstone
+        /*
+            Works like TalkTo, but picks up the item at the specified coordinates instead.
+        */
+        PickupItemAt("MtMoon1F", 2, 2); // moonstone
 
         // MOON ROCKET
         TalkTo("MtMoonB2F", 11, 16);
@@ -165,27 +243,37 @@ public class BlueTas : RedBlueForce {
         ForceTurn(new RbyTurn("HORN ATTACK"), new RbyTurn("SMOG", Miss));
         ForceTurn(new RbyTurn("HORN ATTACK", Crit));
 
+        /*
+            Skips past the evolution.
+        */
         Evolve(); // evolution
-        Press(Joypad.Up, Joypad.A);
-        ClearText();
-        Press(Joypad.A);
+        TalkTo(13, 6);
+        Yes();
         ClearText(); // helix fossil picked up
 
-        Map.Sprites.Remove(13, 6); // https://gunnermaniac.com/pokeworld?local=61#13/6
         MoveTo("Route4", 72, 14);
         ForceEncounter(Action.Right, 9, 0x0000);
         ClearText();
         ForceYoloball();
         ClearText();
-        Press(Joypad.B); // sandshrew caught
+        No(); // sandshrew caught
 
         TalkTo("CeruleanPokecenter", 3, 2);
-        Press(Joypad.A);
+        Yes();
         ClearText(); // healed at center
 
         MoveTo("CeruleanGym", 4, 10);
 
-        PartySwap("SQUIRTLE", "NIDORINO");
+        /*
+            Swaps pokemon #1 with pokemon #2.
+        */
+        PartySwap("NIDORINO", "SQUIRTLE");
+        /*
+            Uses the specified item.
+                Parameter #1: name of the item
+                Parameter #2: name of the pokemon to use the item on [Optional]
+                Parameter #3: name of the move to use the item on [Optional, currently only used for teaching TMs/HMs]
+        */
         UseItem("MOON STONE", "NIDORINO");
 
         // MISTY MINION
@@ -206,18 +294,18 @@ public class BlueTas : RedBlueForce {
         UseItem("TM11", "NIDOKING", "TACKLE");
 
         TalkTo(6, 3);
-        Press(Joypad.B);
+        No();
         ClearText(); // got instant text
 
         // RIVAL 2
-        MoveTo("CeruleanCity", 21, 6);
+        MoveTo("CeruleanCity", 21, 6, Action.Up);
         ClearText();
         ClearText(); // sneaky joypad call
         ForceTurn(new RbyTurn("HORN ATTACK"), new RbyTurn("GUST", 1));
         MoveSwap("HORN ATTACK", "BUBBLEBEAM");
         ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
         ForceTurn(new RbyTurn("POISON STING", Crit));
-        ForceTurn(new RbyTurn("BUBBLEBEAM", Crit), new RbyTurn("TAIL WHIP", Miss));
+        ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
         ForceTurn(new RbyTurn("HORN ATTACK", Crit));
 
         // NUGGET BRIDGE #1
@@ -227,18 +315,18 @@ public class BlueTas : RedBlueForce {
 
         // NUGGET BRIDGE #2
         TalkTo(10, 28);
-        ForceTurn(new RbyTurn("BUBBLEBEAM", Crit), new RbyTurn("SAND-ATTACK", Miss));
+        ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
         ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
 
         // NUGGET BRIDGE #3
         TalkTo(11, 25);
-        ForceTurn(new RbyTurn("BUBBLEBEAM"), new RbyTurn("TAIL WHIP", Miss));
+        ForceTurn(new RbyTurn("BUBBLEBEAM"));
         ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
         ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
 
         // NUGGET BRIDGE #4
         TalkTo(10, 22);
-        ForceTurn(new RbyTurn("BUBBLEBEAM", Crit), new RbyTurn("SAND-ATTACK", Miss));
+        ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
         ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
 
         // NUGGET BRIDGE #5
@@ -257,51 +345,48 @@ public class BlueTas : RedBlueForce {
         ForceTurn(new RbyTurn("BUBBLEBEAM"));
 
         // LASS
-        TalkTo(18, 8);
+        TalkTo(18, 8, Action.Down);
         ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
         ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
 
         // JR TRAINER
         MoveTo(24, 6);
         ClearText();
-        ForceTurn(new RbyTurn("BUBBLEBEAM", Crit), new RbyTurn("TAIL WHIP", Miss));
-        TeachLevelUpMove(3);
+        ForceTurn(new RbyTurn("BUBBLEBEAM"));
+        TeachLevelUpMove("POISON STING");
         ForceTurn(new RbyTurn("BUBBLEBEAM"));
 
         // ODDISH GIRL
         TalkTo(37, 4);
         MoveSwap("BUBBLEBEAM", "THRASH");
         ForceTurn(new RbyTurn("THRASH"));
-        ForceTurn(new RbyTurn("THRASH"), new RbyTurn("SAND-ATTACK", Miss));
+        ForceTurn(new RbyTurn("THRASH"));
         ForceTurn(new RbyTurn("THRASH"));
 
-        TalkTo("BillsHouse", 6, 5);
-        Press(Joypad.A);
+        TalkTo("BillsHouse", 6, 5, Action.Right);
+        Yes();
         ClearText();
         TalkTo(1, 4);
         TalkTo(4, 4);
         UseItem("ESCAPE ROPE"); // escape rope out of bill's house
 
         TalkTo("BikeShop", 6, 3);
-        Press(Joypad.B);
+        No();
         ClearText(); // got instant text
 
         // DIG ROCKET
-        Maps["CeruleanCity"].Sprites.Remove(27, 12);
         MoveTo("CeruleanCity", 30, 9);
-        Press(Joypad.Up, Joypad.A); ClearText();
+        ClearText();
         ForceTurn(new RbyTurn("THRASH"));
         ForceTurn(new RbyTurn("THRASH"));
 
-        MoveTo("UndergroundPathNorthSouth", 4, 4);
-        PickupItem();
+        PickupItemAt("UndergroundPathNorthSouth", 3, 4); // full restore
 
         // ROUTE 6 #1
-        MoveTo("Route6", 11, 29);
-        Press(Joypad.A); ClearText();
-        ForceTurn(new RbyTurn("THRASH"), new RbyTurn("SAND-ATTACK", Miss));
-        ForceTurn(new RbyTurn("THRASH"), new RbyTurn("SAND-ATTACK", Miss));
-        ForceTurn(new RbyTurn("THRASH"), new RbyTurn("SAND-ATTACK", Miss));
+        TalkTo("Route6", 11, 30, Action.Down);
+        ForceTurn(new RbyTurn("THRASH"));
+        ForceTurn(new RbyTurn("THRASH"));
+        ForceTurn(new RbyTurn("THRASH"));
 
         // ROUTE 6 #2
         MoveTo(10, 31);
@@ -313,21 +398,20 @@ public class BlueTas : RedBlueForce {
         ClearText();
 
         // RIVAL 3
-        MoveTo("SSAnne2F", 37, 8);
+        MoveTo("SSAnne2F", 37, 8, Action.Up);
         ClearText();
         ForceTurn(new RbyTurn("THRASH", Crit), new RbyTurn("QUICK ATTACK", Crit | 20));
-        ForceTurn(new RbyTurn("THRASH"), new RbyTurn("TAIL WHIP", Miss));
+        ForceTurn(new RbyTurn("THRASH"));
         ForceTurn(new RbyTurn("THRASH"));
         ForceTurn(new RbyTurn("THRASH", Crit));
 
-        Map.Sprites.Remove(36, 4);
         TalkTo("SSAnneCaptainsRoom", 4, 2); // hm02 received
 
-        MoveTo("SSAnne1F", 27, 0);
+        MoveTo("VermilionDock", 14, 2);
         ClearText();
         ClearText(); // watch cutscene
 
-        MoveTo("VermilionCity", 15, 17);
+        MoveTo("VermilionCity", 15, 17, Action.Down);
         UseItem("HM01", "SANDSHREW");
         Cut();
 
@@ -337,17 +421,15 @@ public class BlueTas : RedBlueForce {
         Press(Joypad.Right);
         ForceCan();
 
-        Execute("U U U U R U U U");
-        Press(Joypad.A);
-        ClearText();
+        // SURGE
+        TalkTo(5, 1);
         ForceTurn(new RbyTurn("THRASH"));
-        ForceTurn(new RbyTurn("THRASH"), new RbyTurn("GROWL", Miss));
+        ForceTurn(new RbyTurn("THRASH"));
         ForceTurn(new RbyTurn("THRASH", Crit));
 
-        Execute("D D"); MoveTo("VermilionCity", 15, 19);
-        Cut();
+        CutAt("VermilionCity", 15, 18);
         TalkTo("PokemonFanClub", 3, 1);
-        Press(Joypad.A);
+        Yes();
         ClearText();
         UseItem("ESCAPE ROPE"); // Escape rope to cerulean
 
@@ -358,10 +440,11 @@ public class BlueTas : RedBlueForce {
         UseItem("TM24", "NIDOKING", "HORN ATTACK");
         UseItem("BICYCLE");
 
-        MoveTo(19, 27);
-        Cut();
-        MoveTo("Route9", 4, 8);
-        Cut();
+        /*
+            Works like TalkTo, but uses Cut.
+        */
+        CutAt(19, 28);
+        CutAt("Route9", 5, 8);
 
         // 4 TURN THRASH
         TalkTo(13, 10);
@@ -377,7 +460,7 @@ public class BlueTas : RedBlueForce {
         ForceTurn(new RbyTurn("THRASH"));
 
         // POKEMANIAC #1
-        TalkTo("RockTunnel1F", 23, 7);
+        TalkTo("RockTunnel1F", 23, 8);
         ForceTurn(new RbyTurn("BUBBLEBEAM"));
         ForceTurn(new RbyTurn("THUNDERBOLT"));
 
@@ -405,12 +488,12 @@ public class BlueTas : RedBlueForce {
         // GAMBLER
         TalkTo("Route8", 46, 13);
         ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
-        ForceTurn(new RbyTurn("THUNDERBOLT", Crit), new RbyTurn("EMBER", Miss));
+        ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
 
         MoveTo("UndergroundPathWestEast", 47, 2);
+
         UseItem("BICYCLE");
-        MoveTo(21, 4);
-        PickupItem();
+        PickupItemAt(21, 5, Action.Down); // elixer
 
         MoveTo("Route7", 5, 14);
         UseItem("BICYCLE");
@@ -431,14 +514,10 @@ public class BlueTas : RedBlueForce {
         TalkTo("CeladonMartElevator", 3, 0);
         ChooseMenuItem(0);
 
-        Execute("L D D");
         MoveTo("CeladonCity", 8, 14);
         UseItem("BICYCLE");
 
-        MoveTo("Route16", 34, 10);
-        Press(Joypad.Up);
-        Cut();
-        MoveTo("Route16", 25, 4);
+        CutAt("Route16", 34, 9);
         MoveTo("Route16", 17, 4);
         UseItem("BICYCLE");
         TalkTo("Route16FlyHouse", 2, 3); // fly received
@@ -452,21 +531,18 @@ public class BlueTas : RedBlueForce {
         // RIVAL 4
         MoveTo("PokemonTower2F", 15, 5);
         ClearText();
-        ForceTurn(new RbyTurn("HORN DRILL"), new RbyTurn("SAND-ATTACK"));
+        ForceTurn(new RbyTurn("HORN DRILL"));
         ForceTurn(new RbyTurn("HORN DRILL"));
         ForceTurn(new RbyTurn("THRASH"));
         ForceTurn(new RbyTurn("THRASH"));
         ForceTurn(new RbyTurn("THRASH", Crit));
-
-        Map.Sprites.Remove(14, 5);
 
         // CHANNELER #1
         TalkTo("PokemonTower4F", 15, 7);
         ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
         ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
 
-        MoveTo(13, 10);
-        PickupItem();
+        PickupItemAt(12, 10); // elixer
 
         MoveTo("PokemonTower5F", 11, 9);
         ClearText(); // heal pad
@@ -484,9 +560,8 @@ public class BlueTas : RedBlueForce {
         TalkTo("PokemonTower6F", 9, 5);
         ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
 
-        MoveTo(6, 7);
-        PickupItem();
-        Execute("D"); MoveTo(10, 16);
+        PickupItemAt(6, 8); // rare candy
+        MoveTo(10, 16);
         ClearText();
         UseItem("POKE DOLL"); // escape ghost
 
@@ -512,8 +587,7 @@ public class BlueTas : RedBlueForce {
         ForceTurn(new RbyTurn("THRASH"));
 
         TalkTo(10, 3);
-        MoveTo(2, 1);
-        Press(Joypad.Right, Joypad.A);
+        TalkTo(3, 1);
         ClearText(); // Pokeflute received
 
         MoveTo("LavenderTown", 7, 10);
@@ -526,30 +600,23 @@ public class BlueTas : RedBlueForce {
         UseItem("POKE FLUTE");
         RunAway();
 
-        Execute("L"); MoveTo("Route17", 8, 120);
-        PickupItem();
+        PickupItemAt("Route17", 8, 121); // max elixer
 
-        MoveTo("Route18", 32, 8);
         MoveTo("Route18", 40, 8);
         UseItem("BICYCLE");
 
-        MoveTo("FuchsiaCity", 18, 20); Press(Joypad.Up);
-        Cut();
-        MoveTo(16, 12);
-        Cut();
+        CutAt("FuchsiaCity", 18, 19);
+        CutAt(16, 11);
         MoveTo("SafariZoneGate", 3, 2);
         ClearText();
-        Press(Joypad.A);
+        Yes();
         ClearText();
         ClearText(); // sneaky joypad call
 
         UseItem("BICYCLE");
-        MoveTo("SafariZoneWest", 19, 6);
-        PickupItem();
+        PickupItemAt("SafariZoneWest", 19, 7, Action.Down); // gold teeth
 
-        MoveTo("SafariZoneSecretHouse", 3, 4);
-        Press(Joypad.A);
-        ClearText();
+        TalkTo("SafariZoneSecretHouse", 3, 3);
         MoveTo("SafariZoneWest", 3, 4);
         UseItem("ESCAPE ROPE");
         Fly(Joypad.Down, 1);
@@ -560,7 +627,7 @@ public class BlueTas : RedBlueForce {
         TalkTo("FuchsiaGym", 7, 8);
         ForceTurn(new RbyTurn("THRASH", Crit));
         ForceTurn(new RbyTurn("THRASH", Crit));
-        ForceTurn(new RbyTurn("THRASH", 39));
+        ForceTurn(new RbyTurn("THRASH"));
         ForceTurn(new RbyTurn("THRASH", Crit));
 
         // JUGGLER #2
@@ -574,42 +641,35 @@ public class BlueTas : RedBlueForce {
         ForceTurn(new RbyTurn("HORN DRILL"));
         ForceTurn(new RbyTurn("HORN DRILL"));
         ForceTurn(new RbyTurn("HORN DRILL"));
-        ForceTurn(new RbyTurn("ELIXER", 0), new RbyTurn("SELFDESTRUCT", Miss));
+        ForceTurn(new RbyTurn("ELIXER", "NIDOKING"), new RbyTurn("SELFDESTRUCT", Miss));
 
         MoveTo("FuchsiaCity", 5, 28);
         UseItem("BICYCLE");
 
-        MoveTo("WardensHouse", 2, 4);
-        Press(Joypad.A);
-        ClearText();
+        TalkTo("WardensHouse", 2, 3);
 
         MoveTo("FuchsiaCity", 27, 28);
         Fly(Joypad.None, 0);
 
-        MoveTo(4, 13);
+        MoveTo(4, 13, Action.Down);
         ItemSwap("NUGGET", "X SPEED");
         UseItem("HM03", "SQUIRTLE");
         UseItem("RARE CANDY", "NIDOKING");
         Surf();
 
-        MoveTo(8, 3, 4); Execute("R");
+        MoveTo("CinnabarIsland", 4, 4);
 
-        MoveTo("PokemonMansion3F", 10, 6);
-        Press(Joypad.Up);
+        TalkTo("PokemonMansion3F", 10, 5, Action.Up);
         ActivateMansionSwitch();
 
-        MoveTo(16, 13); Execute(Action.Down);
-        FallDown(); // TODO: remove this
-        MoveTo("PokemonMansionB1F", 18, 26);
-        Press(Joypad.Up);
+        MoveTo(16, 14);
+        FallDown(); // TODO: look into not having to do this
+        TalkTo("PokemonMansionB1F", 18, 25, Action.Up);
         ActivateMansionSwitch();
 
-        MoveTo(12, 19); // Outsmart pathfinding as it can't see the doors
-        MoveTo(20, 4);
-        Press(Joypad.Up);
+        TalkTo(20, 3, Action.Up);
         ActivateMansionSwitch();
-        MoveTo(5, 12);
-        PickupItem();
+        PickupItemAt(5, 13); // secret key
         UseItem("ESCAPE ROPE");
         Fly(Joypad.Down, 3);
 
@@ -619,31 +679,19 @@ public class BlueTas : RedBlueForce {
         MoveTo("Route7", 18, 10);
         UseItem("BICYCLE");
 
-        Maps[10].Sprites.Remove(18, 22); // https://gunnermaniac.com/pokeworld?local=10#18/22
-        Maps[181].Warps.Remove(16, 10); // https://gunnermaniac.com/pokeworld?local=181#16/10 hmm
-        MoveTo("SilphCo5F", 14, 3);
-        Press(Joypad.Left); PickupItem();
+        PickupItemAt("SilphCo5F", 12, 3);
 
         // ARBOK TRAINER
         TalkTo(8, 16);
         ForceTurn(new RbyTurn("HORN DRILL"));
 
-        Execute("R U D");
-        MoveTo(20, 16);
-        PickupItem();
-        MoveTo(9, 15);
-        Execute("U D");
-        MoveTo(9, 13);
-        Execute("L");
-        UnlockDoor();
-        MoveTo("SilphCo3F", 18, 9);
-        Press(Joypad.Left);
-        UnlockDoor();
-        MoveTo("SilphCo7F", 5, 2);
-        Execute("L L");
-        ClearText();
+        PickupItemAt(21, 16);
+        TalkTo(7, 13);
+        TalkTo("SilphCo3F", 17, 9);
 
         // SILPH RIVAL
+        MoveTo("SilphCo7F", 3, 2, Action.Left);
+        ClearText();
         ForceTurn(new RbyTurn("THUNDERBOLT", Crit), new RbyTurn("QUICK ATTACK", 15));
         ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
         ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
@@ -656,39 +704,37 @@ public class BlueTas : RedBlueForce {
         ForceTurn(new RbyTurn("HORN DRILL"));
         ForceTurn(new RbyTurn("BUBBLEBEAM"));
 
-        Maps["SilphCo11F"].Warps.Remove(5, 5); // https://gunnermaniac.com/pokeworld?local=235#5/5 hmm
-        MoveTo(6, 14);
-        UnlockDoor();
-        Execute("U");
-        ClearText();
+        TalkTo(6, 13, Action.Up);
 
-        // SILPH GIO
+        // SILPH GIOVANNI
+        MoveTo(6, 13);
+        ClearText();
         ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
         ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
         ForceTurn(new RbyTurn("BUBBLEBEAM"));
         ForceTurn(new RbyTurn("HORN DRILL"));
 
-        UseItem("ELIXER", 0);
+        UseItem("ELIXER", "NIDOKING");
         UseItem("ESCAPE ROPE");
 
         Fly(Joypad.Down, 2);
 
         UseItem("BICYCLE");
-        MoveTo("CinnabarGym", 15, 8);
+        TalkTo("CinnabarGym", 15, 7, Action.Up);
         BlaineQuiz(Joypad.A);
-        MoveTo(10, 2); Press(Joypad.Up);
+        TalkTo(10, 1, Action.Up);
         BlaineQuiz(Joypad.B);
-        MoveTo(9, 8); Press(Joypad.Up);
+        TalkTo(9, 7, Action.Up);
         BlaineQuiz(Joypad.B);
-        MoveTo(9, 14); Press(Joypad.Up);
+        TalkTo(9, 13, Action.Up);
         BlaineQuiz(Joypad.B);
-        MoveTo(1, 14);
+        TalkTo(1, 13, Action.Up);
         BlaineQuiz(Joypad.A);
-        MoveTo(1, 8);
+        TalkTo(1, 7, Action.Up);
         BlaineQuiz(Joypad.B);
 
         // BLAINE
-        TalkTo(3, 4);
+        TalkTo(3, 3);
         ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
         ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
         ForceTurn(new RbyTurn("HORN DRILL"));
@@ -697,30 +743,23 @@ public class BlueTas : RedBlueForce {
         UseItem("ESCAPE ROPE");
         Fly(Joypad.Down, 4);
         UseItem("BICYCLE");
-        MoveTo(35, 31);
-        Cut();
-        MoveTo("CeladonGym", 1, 4);
-        Cut();
+        CutAt(35, 32);
+        CutAt("CeladonGym", 2, 4);
 
         // BEAUTY
-        Execute("R");
+        MoveTo(3, 4);
         ClearText();
         ForceTurn(new RbyTurn("HORN DRILL"));
 
         // ERIKA
-        Execute("R");
-        Press(Joypad.Up, Joypad.None, Joypad.Up, Joypad.A); // turn frame
-        ClearText();
+        TalkTo(4, 3);
         ForceTurn(new RbyTurn("THRASH", Crit));
         ForceTurn(new RbyTurn("THRASH", Crit));
         ForceTurn(new RbyTurn("THRASH", Crit));
 
-        MoveTo(5, 6);
-        Cut();
+        CutAt(5, 7);
         MoveTo("CeladonCity", 12, 28);
         Fly(Joypad.Down, 1);
-
-        Map.Sprites.Remove(34, 4);
 
         UseItem("BICYCLE");
 
@@ -743,7 +782,7 @@ public class BlueTas : RedBlueForce {
         ForceTurn(new RbyTurn("BUBBLEBEAM"));
 
         // BLACKBELT
-        Execute("U"); MoveTo(45, 10, 4);
+        MoveTo(10, 4);
         ClearText();
         ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
         ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
@@ -756,7 +795,7 @@ public class BlueTas : RedBlueForce {
         ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
         ForceTurn(new RbyTurn("HORN DRILL"));
         ForceTurn(new RbyTurn("HORN DRILL"));
-        ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
+        ForceTurn(new RbyTurn("BUBBLEBEAM"));
 
         MoveTo("ViridianCity", 32, 8);
         ItemSwap("S.S.TICKET", "MAX ELIXER");
@@ -765,7 +804,7 @@ public class BlueTas : RedBlueForce {
         UseItem("BICYCLE");
 
         // VIRIDIAN RIVAL
-        MoveTo(33, 29, 5);
+        MoveTo("Route22", 29, 5);
         ClearText();
         ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
         ForceTurn(new RbyTurn("X SPEED"), new RbyTurn("TAIL WHIP", Miss));
@@ -775,36 +814,36 @@ public class BlueTas : RedBlueForce {
         ForceTurn(new RbyTurn("FISSURE"));
         ForceTurn(new RbyTurn("FISSURE"));
 
-        MoveTo(193, 4, 2);
+        MoveTo("Route22Gate", 4, 2, Action.Up);
         ClearText();
-        MoveTo(34, 7, 139);
+        MoveTo("Route23", 7, 139);
         UseItem("BICYCLE");
-        MoveTo(7, 136);
+        MoveTo(7, 136, Action.Up);
         ClearText();
-        MoveTo(9, 119);
+        MoveTo(9, 119, Action.Up);
         ClearText();
-        MoveTo(10, 105);
+        MoveTo(10, 105, Action.Up);
         ClearText();
-        Execute("U");
+        MoveTo(10, 104, Action.Up);
         Surf();
-        MoveTo(10, 96);
+        MoveTo(10, 96, Action.Up);
         ClearText();
-        MoveTo(7, 85);
+        MoveTo(7, 85, Action.Up);
         ClearText();
-        MoveTo(8, 72); Execute("U");
+        MoveTo(8, 71, Action.Up);
         UseItem("BICYCLE");
-        MoveTo(12, 56);
+        MoveTo(12, 56, Action.Up);
         ClearText();
-        MoveTo(5, 35);
+        MoveTo(5, 35, Action.Up);
         ClearText();
-        MoveTo(108, 8, 16);
 
+        MoveTo("VictoryRoad1F", 8, 16);
         Strength();
         MoveTo(5, 14);
         PushBoulder(Joypad.Down);
         Execute("D L D");
         for(int i = 0; i < 4; i++) { PushBoulder(Joypad.Right); Execute("R"); }
-        Press(Joypad.Down, Joypad.Down); Execute("R");
+        Execute("D R");
         for(int i = 0; i < 2; i++) { PushBoulder(Joypad.Up); Execute("U"); }
         Execute("L U");
         for(int i = 0; i < 7; i++) { PushBoulder(Joypad.Right); Execute("R"); }
@@ -815,7 +854,7 @@ public class BlueTas : RedBlueForce {
         PushBoulder(Joypad.Right);
         Execute("U R R");
         PushBoulder(Joypad.Down);
-        MoveTo(194, 0, 9);
+        MoveTo("VictoryRoad2F", 0, 9);
 
         Strength();
         MoveTo(5, 14);
@@ -827,7 +866,7 @@ public class BlueTas : RedBlueForce {
         PushBoulder(Joypad.Left); Execute("L");
         PushBoulder(Joypad.Left);
 
-        MoveTo(198, 23, 6);
+        MoveTo("VictoryRoad3F", 23, 6);
         Strength();
         MoveTo(22, 4);
         for(int i = 0; i < 2; i++) { PushBoulder(Joypad.Up); Execute("U"); }
@@ -844,7 +883,7 @@ public class BlueTas : RedBlueForce {
 
         MoveTo(21, 15);
         PushBoulder(Joypad.Right);
-        MoveTo(23, 15);
+        Execute("R R");
         FallDown();
 
         Strength();
@@ -853,11 +892,9 @@ public class BlueTas : RedBlueForce {
         Execute("D R R U");
         for(int i = 0; i < 14; i++) { PushBoulder(Joypad.Left); Execute("L"); }
 
-        MoveTo(174, 15, 8);
+        TalkTo("IndigoPlateauLobby", 15, 8, Action.Up);
 
         // TODO: PC functions
-        Press(Joypad.A);
-        ClearText();
         ChooseMenuItem(0);
         ClearText();
         for(int i = 0; i < 3; i++) {
@@ -870,7 +907,8 @@ public class BlueTas : RedBlueForce {
         MenuPress(Joypad.B);
 
         // LORELEI
-        MoveTo("LoreleisRoom", 4, 2); Press(Joypad.Right, Joypad.None, Joypad.Right, Joypad.A);
+        MoveTo("IndigoPlateauLobby", 8, 0);
+        TalkTo("LoreleisRoom", 5, 2, Action.Right);
         ClearText();
         ForceTurn(new RbyTurn("FISSURE"));
         ForceTurn(new RbyTurn("FISSURE"));
@@ -879,8 +917,8 @@ public class BlueTas : RedBlueForce {
         ForceTurn(new RbyTurn("HORN DRILL"));
 
         // BRUNO
-        Execute("U U");
-        MoveTo("BrunosRoom", 4, 2); Press(Joypad.Right, Joypad.None, Joypad.Right, Joypad.A);
+        Execute("U U U");
+        TalkTo("BrunosRoom", 5, 2, Action.Right);
         ClearText();
         ForceTurn(new RbyTurn("BUBBLEBEAM"));
         ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
@@ -889,8 +927,8 @@ public class BlueTas : RedBlueForce {
         ForceTurn(new RbyTurn("HORN DRILL"));
 
         // AGATHA
-        Execute("U U");
-        MoveTo("AgathasRoom", 4, 2); Press(Joypad.Right, Joypad.None, Joypad.Right, Joypad.A);
+        Execute("U U U");
+        TalkTo("AgathasRoom", 5, 2, Action.Right);
         ClearText();
         ForceTurn(new RbyTurn("X SPEED"), new RbyTurn("HYPNOSIS", Miss));
         ForceTurn(new RbyTurn("FISSURE"));
@@ -902,9 +940,8 @@ public class BlueTas : RedBlueForce {
         UseItem("MAX ELIXER", "NIDOKING");
 
         // LANCE
-        Execute("U U");
-        ClearText();
-        MoveTo("LancesRoom", 5, 1);
+        Execute("U U U");
+        MoveTo("LancesRoom", 6, 2);
         ClearText();
         ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
         ForceTurn(new RbyTurn("FISSURE"));
@@ -913,7 +950,7 @@ public class BlueTas : RedBlueForce {
         ForceTurn(new RbyTurn("HORN DRILL"));
 
         // CHAMPION
-        Execute("U");
+        Execute("L U U U");
         ClearText();
         ForceTurn(new RbyTurn("X SPEED"), new RbyTurn("MIRROR MOVE", Miss));
         ForceTurn(new RbyTurn("HORN DRILL"));

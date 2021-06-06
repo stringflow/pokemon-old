@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 
 public class RbyTileset {
+
     public Rby Game;
     public byte Id;
     public byte Bank;
@@ -14,6 +15,12 @@ public class RbyTileset {
     public List<int> TilePairCollisionsWater;
     public PermissionSet LandPermissions;
     public PermissionSet WaterPermissions;
+    public byte[] WarpTiles;
+    public byte[] DoorTiles;
+
+    public bool AllowBike {
+        get { return Id == 0x0 || Id == 0x3 || Id == 0xb || Id == 0xe || Id == 0x11; }
+    }
 
     public RbyTileset(Rby game, byte id, ByteStream data) {
         Game = game;
@@ -31,11 +38,26 @@ public class RbyTileset {
         TilePairCollisionsWater = new List<int>();
 
         LandPermissions = new PermissionSet();
-        LandPermissions.AddRange(game.ROM.From((game is Yellow ? 0x01 : 0x00) << 16 | CollisionPointer).Until(0xff));
+        LandPermissions.AddRange(game.ROM.From((game is Yellow ? 0x01 : 0x00) << 16 | CollisionPointer).Until(0xff, false));
         WaterPermissions = new PermissionSet();
         WaterPermissions.Add(0x14);
         WaterPermissions.Add(0x32);
         if(id == 14) WaterPermissions.Add(0x48);
+
+        WarpTiles = game.ROM.From(3 << 16 | game.ROM.u16le(game.SYM["WarpTileIDPointers"] + id * 2)).Until(0xff, false);
+
+
+        ByteStream stream = game.ROM.From("DoorTileIDPointers");
+        DoorTiles = new byte[0];
+        for(; ; ) {
+            byte tileset = stream.u8();
+            ushort pointer = stream.u16le();
+            if(tileset == 0xff) break;
+
+            if(tileset == Id) {
+                DoorTiles = game.ROM.From(6 << 16 | pointer).Until(0x00, false);
+            }
+        }
     }
 
     public byte[] GetTiles(byte[] blocks, int width) {

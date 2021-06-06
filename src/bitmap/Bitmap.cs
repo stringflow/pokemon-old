@@ -80,6 +80,19 @@ public class Bitmap {
         }
     }
 
+    public void SetBitmap(Bitmap src, int xOffs, int yOffs) {
+        for(int x = 0; x < src.Width; x++) {
+            int xx = x + xOffs;
+            if(xx < 0 || xx >= Width) continue;
+            for(int y = 0; y < src.Height; y++) {
+                int yy = y + yOffs;
+                if(yy < 0 || yy >= Height) continue;
+                int srcIndex = (x + y * src.Width) * 4;
+                SetPixel(xx, yy, src.Pixels[srcIndex + 0], src.Pixels[srcIndex + 1], src.Pixels[srcIndex + 2], src.Pixels[srcIndex + 3]);
+            }
+        }
+    }
+
     public Bitmap SubBitmap(int x, int y, int width, int height) {
         Bitmap ret = new Bitmap(width, height);
         SubBitmap(ret, x, y, ret.Width, ret.Height);
@@ -98,6 +111,14 @@ public class Bitmap {
         for(int xx = 0; xx < width; xx++) {
             for(int yy = 0; yy < height; yy++) {
                 SetPixel(x + xx, y + yy, r, g, b, a);
+            }
+        }
+    }
+
+    public void DrawRect(int x, int y, int width, int height, byte r, byte g, byte b, byte a = 0xff) {
+        for(int xx = 0; xx < width; xx++) {
+            for(int yy = 0; yy < height; yy++) {
+                DrawPixel(x + xx, y + yy, r, g, b, a);
             }
         }
     }
