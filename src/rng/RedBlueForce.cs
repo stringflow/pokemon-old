@@ -57,10 +57,10 @@ public class RedBlueForce : RedBlue {
         B = dvs & 0xff;
     }
 
-    public void ForceYoloball() {
+    public void ForceYoloball(string ballname) {
         ClearText();
         BattleMenu(0, 1);
-        ChooseListItem(0);
+        ChooseListItem(Bag.IndexOf(ballname));
         RunUntil(SYM["ItemUseBall.loop"] + 0x8);
         A = 1;
     }
@@ -270,9 +270,6 @@ public class RedBlueForce : RedBlue {
 
                 RbyTileset tileset = neighborTile.Map.Tileset;
                 bool landCollision = !CollisionCheck(overworldMap, startTile, endTile, currentTile, neighborTile, tileset.LandPermissions, tileset.TilePairCollisionsLand);
-
-                // TODO: remove this once you added wram overworld map reading
-                if(neighborTile.Collision == 0x24 && neighborTile.Map.Tileset.Id == 0x11 && neighborTile.Map.Id != 61) landCollision = false;
 
                 if(!surfing) {
                     if(landCollision) continue;
@@ -884,7 +881,7 @@ public class RedBlueForce : RedBlue {
             case "ItemUseEvoStone": // Can only be used outside of battle
                 ChooseMenuItem(0); // USE
                 ChooseMenuItem(target1);
-                Evolve();
+                RunUntil("Evolution_PartyMonLoop.done");
                 break;
             case "ItemUseTMHM": // Can only be used outside of battle
                 int numMoves = PartyMon(target1).NumMoves;
@@ -1049,6 +1046,7 @@ public class RedBlueForce : RedBlue {
 
     public void Evolve() {
         RunUntil("Evolution_PartyMonLoop.done");
+        RunUntil(SYM["JoypadOverworld"] + 0xa);
     }
 
     public void RunAway() {
@@ -1062,12 +1060,12 @@ public class RedBlueForce : RedBlue {
     }
 
     public void ActivateMansionSwitch() {
-        Press(Joypad.A);
+        MenuPress(Joypad.A);
         ClearText();
     }
 
     public void BlaineQuiz(Joypad joypad) {
-        Press(joypad);
+        MenuPress(joypad);
         ClearText();
     }
 
@@ -1080,10 +1078,10 @@ public class RedBlueForce : RedBlue {
     }
 
     public void Yes() {
-        Press(Joypad.A);
+        MenuPress(Joypad.A);
     }
 
     public void No() {
-        Press(Joypad.B);
+        MenuPress(Joypad.B);
     }
 }

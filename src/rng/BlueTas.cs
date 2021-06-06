@@ -10,7 +10,8 @@ public class BlueTas : RedBlueForce {
 
     public BlueTas() : base("roms/pokeblue.gbc", true) {
         // NOTE: Record requires ffmpeg.exe to be in PATH, it will output to movies/video.mp4, movies/audio.mp3, stitch the two together and save to movies/blue-tas.mp4
-        Record("blue-tas");
+        //       If only a black window shows up, change https://github.com/stringflow/pokemon/blob/main/src/gfx/Renderer.cs#L77 to SDL2RenderContext.
+        //Record("blue-tas");
         //Show();
 
         //Note: you may start after the playback of an existing bk2:
@@ -19,6 +20,7 @@ public class BlueTas : RedBlueForce {
             Parameter #2: frame count to playback up to [Optional, if omitted the entire bk2 will be played back]
         */
         //PlayBizhawkMovie("example.bk2", 12345);
+
 
         new RbyIntroSequence(RbyStrat.NoPal, RbyStrat.GfSkip, RbyStrat.Hop0, RbyStrat.TitleSkip, RbyStrat.NewGame).Execute(this);
 
@@ -111,6 +113,7 @@ public class BlueTas : RedBlueForce {
             Notes:
                 - Thrash/Petal Dance will be 4 turns by default.
                 - If the opponent will not get a turn, but may use a priority move, the opponent's turn may still be omitted and a non-priority move will be forced.
+                - Trainer AI is ignored for now.
         */
         ForceTurn(new RbyTurn("TAIL WHIP"), new RbyTurn("GROWL", Miss));
         ForceTurn(new RbyTurn("TACKLE"), new RbyTurn("GROWL", Miss));
@@ -145,10 +148,10 @@ public class BlueTas : RedBlueForce {
         */
         ForceEncounter(Action.Up, 8, 0xf6ef);
         /*
-            Modifies the RNG to gurantee a yoloball catch.
-            NOTE: This function currently only works if the ball that is to be thrown in in slot 1 of the inventory.
+            Modifies the RNG to guarantee a yoloball catch.
+                Parameter #1: name of the ball that is to be thrown
         */
-        ForceYoloball();
+        ForceYoloball("POKE BALL");
         ClearText();
         Yes();
         Press(Joypad.None, Joypad.A, Joypad.Start); // nido nickname
@@ -172,7 +175,7 @@ public class BlueTas : RedBlueForce {
         MoveTo(Maps["Route2"][6, 2]);
         ForceEncounter(Action.Right, 4, 0xffff);
         ClearText();
-        ForceYoloball();
+        ForceYoloball("POKE BALL");
         ClearText();
         No(); // pidgey caught
 
@@ -261,7 +264,7 @@ public class BlueTas : RedBlueForce {
         MoveTo("Route4", 72, 14);
         ForceEncounter(Action.Right, 9, 0x0000);
         ClearText();
-        ForceYoloball();
+        ForceYoloball("POKE BALL");
         ClearText();
         No(); // sandshrew caught
 

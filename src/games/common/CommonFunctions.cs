@@ -58,7 +58,7 @@ public partial class GameBoy {
     }
 
     public (Joypad Input, int Amount) CalcScroll(int target, int current, int max, bool wrapping) {
-        if((CpuRead(0xfff6 + (this is Yellow ? 4 : 0)) & 0x02) > 0 && CpuReadBE<ushort>("wEnemyMonHP") > 0) {
+        if((CpuRead(0xfff6 + (this is Yellow ? 4 : 0)) & 0x02) > 0 && CpuReadBE<ushort>("wEnemyMonHP") > 0 && CpuRead("wIsInBattle") > 0) {
             // The move selection is its own thing for some reason, so the input values are wrong have to be adjusted.
             current--;
             max = CpuRead("wNumMovesMinusOne");
