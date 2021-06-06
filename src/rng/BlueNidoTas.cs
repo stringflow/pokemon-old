@@ -115,7 +115,7 @@ public class BlueNidoTas : RedBlueForce {
 
                 For defining turns:
                     Parameter #1: name of the move *OR* name of the item that will be used
-                    Parameter #2: Bitfield flags [Lower 6 bits will be the damage roll *OR* Psywave damage,
+                    Parameter #2: Bitfield flags [Lower 6 bits will be the damage roll (one based, 1-39) *OR* Psywave damage,
                                                   for the rest see https://github.com/stringflow/pokemon/blob/main/src/rng/RedBlueForce.cs#L18-L22]
 
                 Notes:

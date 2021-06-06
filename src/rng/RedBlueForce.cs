@@ -31,15 +31,15 @@ public class RedBlueForce : RedBlue {
     public MenuType CurrentMenuType = MenuType.None;
 
     private bool CacheCleared;
-    private string ChachedStatesDirectory;
+    private string CachedStatesDirectory;
 
     public RedBlueForce(string rom, bool speedup = false) : base(rom, speedup) {
-        ChachedStatesDirectory = "rng-cache/" + GetType().Name;
-        if(!Directory.Exists(ChachedStatesDirectory)) Directory.CreateDirectory(ChachedStatesDirectory);
+        CachedStatesDirectory = "rng-cache/" + GetType().Name;
+        if(!Directory.Exists(CachedStatesDirectory)) Directory.CreateDirectory(CachedStatesDirectory);
     }
 
     public void CacheState(string name, System.Action fn) {
-        string state = ChachedStatesDirectory + "/" + name + ".gqs";
+        string state = CachedStatesDirectory + "/" + name + ".gqs";
         if(!CacheCleared && File.Exists(state)) {
             LoadState(state);
         } else {
