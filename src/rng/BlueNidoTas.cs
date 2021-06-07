@@ -4,14 +4,13 @@ public class BlueNidoTas : RedBlueForce {
     //  - TAS menu execution
     //  - TAS instant text execution (this is challenging)
     //  - Better NPC support (being able to specify how they should move)
-    //  - Automatic fly menus
     //  - Better pathfinding
     //    > Make pathfinding consider turn frames (last moon room/post underground elixer house)
 
     public BlueNidoTas() : base("roms/pokeblue.gbc", true) {
         // NOTE: Record requires ffmpeg.exe to be in PATH, it will output to movies/video.mp4, movies/audio.mp3, stitch the two together and save to movies/blue-tas.mp4
         //       If only a black window shows up, change https://github.com/stringflow/pokemon/blob/main/src/gfx/Renderer.cs#L77 to SDL2RenderContext.
-        //Record("blue-tas");
+        Record("blue-tas");
         //Show();
 
         /*
@@ -59,13 +58,9 @@ public class BlueNidoTas : RedBlueForce {
 
             /*
                 Sets the in-game options. Note: This function currently only works in the overworld, and will not work on the new-game-screen.
-                The parameters represent the x coordinates of the options you want to be set:
-                    FAST   MEDIUM   SLOW  -   0   1   2
-                    ON              OFF   -   0       1
-                    SHIFT           SET   -   0       1
-                Therefore the parameters below will set FAST/OFF/SET.
+                The parameter is a bit field of the options you want to set.
             */
-            SetOptions(0, 1, 1);
+            SetOptions(Fast | Off | Set);
 
             /*
                 Moves to the specified coordinates via pathfinding.
@@ -116,7 +111,7 @@ public class BlueNidoTas : RedBlueForce {
                 For defining turns:
                     Parameter #1: name of the move *OR* name of the item that will be used
                     Parameter #2: Bitfield flags [Lower 6 bits will be the damage roll (one based, 1-39) *OR* Psywave damage,
-                                                  for the rest see https://github.com/stringflow/pokemon/blob/main/src/rng/RedBlueForce.cs#L18-L22]
+                                                  for the rest see https://github.com/stringflow/pokemon/blob/main/src/rng/RedBlueForce.cs#L20-L24]
 
                 Notes:
                     - Thrash/Petal Dance will be 4 turns by default.
@@ -201,8 +196,7 @@ public class BlueNidoTas : RedBlueForce {
             ForceTurn(new RbyTurn("BUBBLE"));
             ForceTurn(new RbyTurn("BUBBLE", Crit | 38), new RbyTurn("SCREECH", Miss));
             ForceTurn(new RbyTurn("BUBBLE"), new RbyTurn("TACKLE", Crit | 38));
-            ChooseMenuItem(1);
-            ClearText();
+            SendOut("NIDORANM");
             ForceTurn(new RbyTurn("TACKLE"), new RbyTurn("TACKLE", 38));
         });
 
@@ -568,7 +562,7 @@ public class BlueNidoTas : RedBlueForce {
             ItemSwap("HELIX FOSSIL", "POKE DOLL");
             UseItem("TM07", "NIDOKING", "LEER");
             UseItem("HM02", "PIDGEY");
-            Fly(Joypad.Down, 3);
+            Fly("LavenderTown");
         });
 
         CacheState("pokemontower", () => {
@@ -635,7 +629,7 @@ public class BlueNidoTas : RedBlueForce {
             ClearText(); // Pokeflute received
 
             MoveTo("LavenderTown", 7, 10);
-            Fly(Joypad.Down, 1);
+            Fly("CeladonCity");
         });
 
         CacheState("safari", () => {
@@ -668,7 +662,7 @@ public class BlueNidoTas : RedBlueForce {
         });
 
         CacheState("koga", () => {
-            Fly(Joypad.Down, 1);
+            Fly("FuchsiaCity");
             UseItem("BICYCLE");
 
             // JUGGLER #1
@@ -700,7 +694,7 @@ public class BlueNidoTas : RedBlueForce {
         });
 
         CacheState("mansion", () => {
-            Fly(Joypad.None, 0);
+            Fly("PalletTown");
             MoveTo(4, 13, Action.Down);
             ItemSwap("NUGGET", "X SPEED");
             UseItem("HM03", "SQUIRTLE");
@@ -724,7 +718,7 @@ public class BlueNidoTas : RedBlueForce {
         });
 
         CacheState("silph", () => {
-            Fly(Joypad.Down, 3);
+            Fly("CeladonCity");
 
             UseItem("BICYCLE");
             MoveTo("Route7Gate", 3, 4);
@@ -771,7 +765,7 @@ public class BlueNidoTas : RedBlueForce {
         });
 
         CacheState("blaine", () => {
-            Fly(Joypad.Down, 2);
+            Fly("CinnabarIsland");
 
             UseItem("BICYCLE");
             TalkTo("CinnabarGym", 15, 7, Action.Up);
@@ -798,7 +792,7 @@ public class BlueNidoTas : RedBlueForce {
         });
 
         CacheState("erika", () => {
-            Fly(Joypad.Down, 4);
+            Fly("CeladonCity");
             UseItem("BICYCLE");
             CutAt(35, 32);
             CutAt("CeladonGym", 2, 4);
@@ -819,7 +813,7 @@ public class BlueNidoTas : RedBlueForce {
         });
 
         CacheState("sabrina", () => {
-            Fly(Joypad.Down, 1);
+            Fly("SaffronCity");
 
             UseItem("BICYCLE");
 
@@ -835,7 +829,7 @@ public class BlueNidoTas : RedBlueForce {
         });
 
         CacheState("giovanni", () => {
-            Fly(Joypad.Up, 1);
+            Fly("ViridianCity");
 
             UseItem("BICYCLE");
 

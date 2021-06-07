@@ -27,7 +27,7 @@ public class SCTTas : RedBlueForce {
         });
 
         CacheState("koga", () => {
-            Fly(Joypad.Down, 1);
+            Fly("FuchsiaCity");
             UseItem("BICYCLE");
 
             // JUGGLER #1
@@ -60,7 +60,7 @@ public class SCTTas : RedBlueForce {
         });
 
         CacheState("mansion", () => {
-            Fly(Joypad.None, 0);
+            Fly("PalletTown");
 
             MoveTo(4, 13, Action.Down);
             Surf();
@@ -165,7 +165,7 @@ public class SCTTas : RedBlueForce {
         });
 
         CacheState("blaine", () => {
-            Fly(Joypad.Down, 2);
+            Fly("CinnabarIsland");
             UseItem("BICYCLE");
             TalkTo("CinnabarGym", 15, 7, Action.Up);
             BlaineQuiz(Joypad.A);
@@ -191,7 +191,7 @@ public class SCTTas : RedBlueForce {
         });
 
         CacheState("giovanni", () => {
-            Fly(Joypad.Up, 1);
+            Fly("ViridianCity");
             UseItem("BICYCLE");
 
             // RHYHORN

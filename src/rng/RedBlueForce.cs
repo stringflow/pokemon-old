@@ -16,17 +16,28 @@ public enum MenuType {
 
 public class RedBlueForce : RedBlue {
 
+    // forceturn flags
     public const int Miss = 0x40;
     public const int Crit = 0x80;
-    public const int Effect = 0x100;
+    public const int SideEffect = 0x100;
     public const int ThreeTurn = 0x200;
     public const int Hitself = 0x400;
 
+    // pathfinding constants
     public const int WalkCost = 17;
     public const int BikeCo = 9;
     public const int LedgeHopCost = 40;
     public const int WarpCost = 100;
     public const int BonkCost = 8;
+
+    // wOptions flags
+    public const int Fast = 0x1;
+    public const int Medium = 0x3;
+    public const int Slow = 0x5;
+    public const int On = 0x0;
+    public const int Off = 0x80;
+    public const int Shift = 0x0;
+    public const int Set = 0x40;
 
     public MenuType CurrentMenuType = MenuType.None;
 
@@ -80,7 +91,7 @@ public class RedBlueForce : RedBlue {
     public void ForceYoloball(string ballname) {
         ClearText();
         BattleMenu(0, 1);
-        ChooseListItem(Bag.IndexOf(ballname));
+        ChooseListItem(FindItem(ballname));
         RunUntil(SYM["ItemUseBall.loop"] + 0x8);
         A = 1;
     }
@@ -100,7 +111,7 @@ public class RedBlueForce : RedBlue {
         } else if(!BattleMon.ThrashingAbout) {
             if(CurrentMenuType != MenuType.Fight) BattleMenu(0, 0);
 
-            int moveIndex = FindMove(playerTurn.Move);
+            int moveIndex = FindBattleMove(playerTurn.Move);
 
             // Reusing 'ChooseMenuItem' code, because the final AdvanceFrame advances past 'SelectEnemyMove.done', 
             // and I don't have a good solution for this problem right now.
@@ -174,8 +185,11 @@ public class RedBlueForce : RedBlue {
         int enemyTurnDone3 = SYM["HandleEnemyMonFainted"];
 
         int ret;
+        Joypad holdButton = Joypad.None;
+        if((CpuRead("wOptions") & 0x7) != 1) holdButton = Joypad.A;
+
         do {
-            while(Array.IndexOf(textaddrs, ret = RunUntil(crit, accuracy, damageRoll, ai, opponentModifierDownAccuracy, modifierDown, freezeBurnParalyze, poison, flinch, playerConfusion, enemyConfusion, thrash, psywave, playerTurnDone1, playerTurnDone2, playerTurnDone3, enemyTurnDone1, enemyTurnDone2, enemyTurnDone3, textscroll, pause)) != -1) {
+            while(Array.IndexOf(textaddrs, ret = Hold(holdButton, crit, accuracy, damageRoll, ai, opponentModifierDownAccuracy, modifierDown, freezeBurnParalyze, poison, flinch, playerConfusion, enemyConfusion, thrash, psywave, playerTurnDone1, playerTurnDone2, playerTurnDone3, enemyTurnDone1, enemyTurnDone2, enemyTurnDone3, textscroll, pause)) != -1) {
                 Joypad joypad = (Joypad) CpuRead("hJoyLast");
                 if(joypad == Joypad.None) joypad = Joypad.A;
                 joypad ^= (Joypad.A | Joypad.B);
@@ -197,7 +211,7 @@ public class RedBlueForce : RedBlue {
             } else if(ret == opponentModifierDownAccuracy) {
                 A = (turn.Flags & Miss) != 0 ? 0x00 : 0xff;
             } else if(ret == freezeBurnParalyze || ret == poison || ret == modifierDown || ret == flinch) {
-                A = (turn.Flags & Effect) != 0 ? 0x00 : 0xff;
+                A = (turn.Flags & SideEffect) != 0 ? 0x00 : 0xff;
             } else if(ret == playerConfusion || ret == enemyConfusion) {
                 A = (turn.Flags & Hitself) > 0 ? 0xff : 0x00;
             } else if(ret == thrash) {
@@ -624,22 +638,46 @@ public class RedBlueForce : RedBlue {
         return Execute(path.ToArray());
     }
 
-    public void TalkTo(int map, int x, int y, Action preferredDirection = Action.None) {
+    public void TalkTo(int map, int x, int y) {
+        TalkTo(Maps[map][x, y], Action.None);
+    }
+
+    public void TalkTo(string map, int x, int y) {
+        TalkTo(Maps[map][x, y], Action.None);
+    }
+
+    public void TalkTo(int targetX, int targetY) {
+        TalkTo(Map[targetX, targetY], Action.None);
+    }
+
+    public void TalkTo(int map, int x, int y, Joypad holdButton = Joypad.None) {
+        TalkTo(Maps[map][x, y], Action.None, holdButton);
+    }
+
+    public void TalkTo(string map, int x, int y, Joypad holdButton = Joypad.None) {
+        TalkTo(Maps[map][x, y], Action.None, holdButton);
+    }
+
+    public void TalkTo(int targetX, int targetY, Joypad holdButton = Joypad.None) {
+        TalkTo(Map[targetX, targetY], Action.None, holdButton);
+    }
+
+    public void TalkTo(int map, int x, int y, Action preferredDirection = Action.None, Joypad holdButton = Joypad.None) {
         TalkTo(Maps[map][x, y], preferredDirection);
     }
 
-    public void TalkTo(string map, int x, int y, Action preferredDirection = Action.None) {
+    public void TalkTo(string map, int x, int y, Action preferredDirection = Action.None, Joypad holdButton = Joypad.None) {
         TalkTo(Maps[map][x, y], preferredDirection);
     }
 
-    public void TalkTo(int targetX, int targetY, Action preferredDirection = Action.None) {
+    public void TalkTo(int targetX, int targetY, Action preferredDirection = Action.None, Joypad holdButton = Joypad.None) {
         TalkTo(Map[targetX, targetY], preferredDirection);
     }
 
-    public void TalkTo(RbyTile target, Action preferredDirection = Action.None) {
+    public void TalkTo(RbyTile target, Action preferredDirection = Action.None, Joypad holdButton = Joypad.None) {
         MoveTo(target, preferredDirection);
         Press(Joypad.A);
-        ClearText();
+        ClearText(holdButton);
     }
 
     public void PickupItemAt(int map, int x, int y, Action preferredDirection = Action.None) {
@@ -743,25 +781,31 @@ public class RedBlueForce : RedBlue {
         RunUntil("JoypadOverworld");
     }
 
-    public void SetOptions(int textSpeed, int animations, int battleStyle) {
+    public void SetOptions(int newOptions) {
         OpenOptions();
-        byte options = CpuRead("wOptions");
 
-        int curTextSpeed = (options & 7) >> 1;
-        int curAnimations = options & 0x40;
-        int curBattleStyle = options & 0x20;
+        int newTextSpeed = (newOptions & 0xf);
+        int newBattleStyle = newOptions & 0x40;
+        int newAnimations = newOptions & 0x80;
 
-        if(textSpeed != curTextSpeed) MenuPress(textSpeed > curTextSpeed ? Joypad.Right : Joypad.Left);
+        byte curOptions = CpuRead("wOptions");
+        int curTextSpeed = (curOptions & 0xf);
+        int curBattleStyle = curOptions & 0x40;
+        int curAnimations = curOptions & 0x80;
 
-        if(animations != curAnimations || battleStyle != curBattleStyle) {
+        if(newTextSpeed != curTextSpeed) MenuPress(newTextSpeed > curTextSpeed ? Joypad.Right : Joypad.Left);
+
+        if(newAnimations != curAnimations || newBattleStyle != curBattleStyle) {
             MenuPress(Joypad.Down);
-            if(animations != curAnimations) MenuPress(animations > curAnimations ? Joypad.Right : Joypad.Left);
+            if(newAnimations != curAnimations) MenuPress(newAnimations > curAnimations ? Joypad.Right : Joypad.Left);
 
-            if(battleStyle != curBattleStyle) {
+            if(newBattleStyle != curBattleStyle) {
                 MenuPress(Joypad.Down);
-                MenuPress(battleStyle > curBattleStyle ? Joypad.Right : Joypad.Left);
+                MenuPress(newBattleStyle > curBattleStyle ? Joypad.Right : Joypad.Left);
             }
         }
+
+        Debug.Assert(CpuRead("wOptions") == newOptions, "Options were not set correctly!");
     }
 
     public void Buy(params object[] itemsToBuy) {
@@ -776,6 +820,7 @@ public class RedBlueForce : RedBlue {
             int quantity = (int) itemsToBuy[i + 1];
 
             int itemSlot = Array.IndexOf(mart, item);
+            Debug.Assert(itemSlot != -1, "Unable to find item " + itemsToBuy[i].ToString() + " in the mart");
             ChooseListItem(itemSlot);
             for(int j = 1; j < quantity; j++) MenuPress(Joypad.Up);
             MenuPress(Joypad.A);
@@ -799,7 +844,7 @@ public class RedBlueForce : RedBlue {
             string item = itemsToSell[i].ToString();
             int quantity = (int) itemsToSell[i + 1];
 
-            ChooseListItem(Bag.IndexOf(item));
+            ChooseListItem(FindItem(item));
             if(quantity == 0) MenuPress(Joypad.Down);
             else {
                 for(int j = 1; j < quantity; j++) MenuPress(Joypad.Up);
@@ -871,9 +916,23 @@ public class RedBlueForce : RedBlue {
         CurrentMenuType = MenuType.Options;
     }
 
-    public int PartyIndex(string mon) {
+    public int FindPokemon(string mon) {
         RbyPokemon[] party = Party;
-        return Array.IndexOf(party, party.Where(p => p.Species.Name == mon).First());
+        int index = Array.IndexOf(party, party.Where(p => p.Species.Name == mon).First());
+        Debug.Assert(index != -1, "Unable to find the pokemon " + mon);
+        return index;
+    }
+
+    public int FindBattleMove(string move) {
+        int index = Array.IndexOf(BattleMon.Moves, Moves[move]);
+        Debug.Assert(index != -1, "Unable to find the move " + move);
+        return index;
+    }
+
+    public int FindItem(string item) {
+        int index = Bag.IndexOf(item);
+        Debug.Assert(index != -1, "Unable to find the item " + item);
+        return index;
     }
 
     public new void PartySwap(int mon1, int mon2) {
@@ -884,11 +943,11 @@ public class RedBlueForce : RedBlue {
     }
 
     public void PartySwap(string mon1, string mon2) {
-        PartySwap(PartyIndex(mon1), PartyIndex(mon2));
+        PartySwap(FindPokemon(mon1), FindPokemon(mon2));
     }
 
     public void ItemSwap(string item1, string item2) {
-        ItemSwap(Bag.IndexOf(item1), Bag.IndexOf(item2));
+        ItemSwap(FindItem(item1), FindItem(item2));
     }
 
     public new void ItemSwap(int item1, int item2) {
@@ -902,11 +961,12 @@ public class RedBlueForce : RedBlue {
     }
 
     public void UseItem(string name, string target1, string target2 = "") {
-        int partyIndex = PartyIndex(target1);
+        int partyIndex = FindPokemon(target1);
         int slotIndex = -1;
         if(target2 != "") {
             RbyPokemon mon = Party[partyIndex];
             slotIndex = Array.IndexOf(mon.Moves, mon.Moves.Where(m => m != null && m.Name == target2).First());
+            Debug.Assert(slotIndex != -1, "Unable to find the move " + target2);
         }
         UseItem(Items[name], partyIndex, slotIndex);
     }
@@ -994,15 +1054,11 @@ public class RedBlueForce : RedBlue {
     }
 
     public void MoveSwap(string move1, string move2) {
-        MoveSwap(FindMove(move1), FindMove(move2));
-    }
-
-    public int FindMove(string move) {
-        return Array.IndexOf(BattleMon.Moves, Moves[move]);
+        MoveSwap(FindBattleMove(move1), FindBattleMove(move2));
     }
 
     public void TeachLevelUpMove(string moveToOverwrite) {
-        TeachLevelUpMove(FindMove(moveToOverwrite));
+        TeachLevelUpMove(FindBattleMove(moveToOverwrite));
     }
 
     public void TeachLevelUpMove(int slot) {
@@ -1017,6 +1073,12 @@ public class RedBlueForce : RedBlue {
         ClearText();
         Yes();
         ClearText();
+    }
+
+    public void SendOut(string name, Joypad holdButton = Joypad.None) {
+        if(CpuRead("wIsInBattle") == 1) Yes(); // Wild encounters ask if you want to send out or run away
+        ChooseMenuItem(FindPokemon(name));
+        ClearText(holdButton);
     }
 
     public void Cut() {
@@ -1039,6 +1101,20 @@ public class RedBlueForce : RedBlue {
     public void Strength() {
         UseOverworldMove("STRENGTH");
         ClearText();
+    }
+
+    public void Fly(string townName) {
+        ushort townFlags = CpuReadLE<ushort>("wTownVisitedFlag");
+        List<string> visitedTowns = new List<string>();
+        for(int i = 0; i <= 10; i++) {
+            if((townFlags & (1 << i)) > 0) visitedTowns.Add(Maps[i].Name);
+        }
+
+        Debug.Assert(visitedTowns.Contains(townName), "You do not have the fly location for " + townName + " unlocked yet");
+
+        var scroll = CalcScroll(visitedTowns.IndexOf(townName), 0, visitedTowns.Count() - 1, true);
+        // the input has to be inverted as menuing code is reused which assumes pressing down = going down in the list
+        Fly(scroll.Input ^ (Joypad.Up | Joypad.Down), scroll.Amount);
     }
 
     public void Fly(Joypad direction, int amount) {
@@ -1066,9 +1142,9 @@ public class RedBlueForce : RedBlue {
             "FLASH"
         };
 
-        int partyIndex = 0;
-        int moveIndex = 0;
-        for(int i = 0; i < PartySize && partyIndex == 0; i++) {
+        int partyIndex = -1;
+        int moveIndex = -1;
+        for(int i = 0; i < PartySize && partyIndex == -1; i++) {
             RbyPokemon partyMon = PartyMon(i);
             moveIndex = 0;
             for(int j = 0; j < 4; j++) {
@@ -1083,6 +1159,8 @@ public class RedBlueForce : RedBlue {
                 }
             }
         }
+
+        Debug.Assert(partyIndex != -1 && moveIndex != -1, "Unable to find pokemon with the move " + name);
 
         OpenParty();
         ChooseMenuItem(partyIndex);
@@ -1117,7 +1195,7 @@ public class RedBlueForce : RedBlue {
 
     public void PushBoulder(Joypad joypad) {
         int encounterCheck = SYM["TryDoWildEncounter.CanEncounter"] + 3;
-        while(Hold(joypad, 0x14f41, encounterCheck) == encounterCheck) {
+        while(Hold(joypad, SYM["UpdateNPCSprite"] + 0x70, encounterCheck) == encounterCheck) {
             A = 0xff;
             RunFor(1);
         }

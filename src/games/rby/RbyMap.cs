@@ -127,8 +127,9 @@ public class RbyWarp {
         DestinationMap = data.u8();
         Allowed = false;
 
-        if(!(game is Yellow) && DestinationMap == 0xff) {
-            DestinationMap = RedBlue.wLastMapDestinations[(map.Name, index)];
+        if(DestinationMap == 0xff) {
+            if(game is RedBlue) DestinationMap = RedBlue.wLastMapDestinations[(map.Name, index)];
+            else DestinationMap = Yellow.wLastMapDestinations[(map.Name, index)];
         }
     }
 }
