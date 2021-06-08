@@ -38,14 +38,13 @@ public class RbyTileset {
         TilePairCollisionsWater = new List<int>();
 
         LandPermissions = new PermissionSet();
-        LandPermissions.AddRange(game.ROM.From((game is Yellow ? 0x01 : 0x00) << 16 | CollisionPointer).Until(0xff, false));
+        LandPermissions.AddRange(game.ROM.From((game.IsYellow ? 0x01 : 0x00) << 16 | CollisionPointer).Until(0xff, false));
         WaterPermissions = new PermissionSet();
         WaterPermissions.Add(0x14);
         WaterPermissions.Add(0x32);
         if(id == 14) WaterPermissions.Add(0x48);
 
         WarpTiles = game.ROM.From(3 << 16 | game.ROM.u16le(game.SYM["WarpTileIDPointers"] + id * 2)).Until(0xff, false);
-
 
         ByteStream stream = game.ROM.From("DoorTileIDPointers");
         DoorTiles = new byte[0];

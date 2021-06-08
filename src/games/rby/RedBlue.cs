@@ -254,24 +254,24 @@ public class RedBlue : Rby {
 
     public RedBlue(string rom, bool speedup = false) : base(rom, speedup ? SpeedupFlags.All : SpeedupFlags.None) { }
 
-    public override void ChooseMenuItem(int target) {
+    public override void ChooseMenuItem(int target, Joypad direction = Joypad.None) {
         RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
-        MenuScroll(target, Joypad.A, CpuReadLE<ushort>(Registers.SP + 6) != SYM["RedisplayStartMenu.loop"] + 0x3 && CpuReadLE<ushort>(Registers.SP + 6) != (SYM["SelectMenuItem.select"] & 0xffff) + 0x8);
+        MenuScroll(target, Joypad.A | direction, CpuReadLE<ushort>(Registers.SP + 6) != SYM["RedisplayStartMenu.loop"] + 0x3 && CpuReadLE<ushort>(Registers.SP + 6) != (SYM["SelectMenuItem.select"] & 0xffff) + 0x8);
     }
 
-    public override void SelectMenuItem(int target) {
+    public override void SelectMenuItem(int target, Joypad direction = Joypad.None) {
         RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
-        MenuScroll(target, Joypad.Select, true);
+        MenuScroll(target, Joypad.Select | direction, true);
     }
 
-    public override void ChooseListItem(int target) {
+    public override void ChooseListItem(int target, Joypad direction = Joypad.None) {
         RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
-        ListScroll(target, Joypad.A, true);
+        ListScroll(target, Joypad.A | direction, true);
     }
 
-    public override void SelectListItem(int target) {
+    public override void SelectListItem(int target, Joypad direction = Joypad.None) {
         RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
-        ListScroll(target, Joypad.Select, true);
+        ListScroll(target, Joypad.Select | direction, true);
     }
 }
 

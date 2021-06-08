@@ -255,23 +255,23 @@ public class Yellow : Rby {
 
     public Yellow(bool speedup = false) : base("roms/pokeyellow.gbc", speedup ? SpeedupFlags.NoVideo | SpeedupFlags.NoSound : SpeedupFlags.None) { }
 
-    public override void ChooseMenuItem(int target) {
+    public override void ChooseMenuItem(int target, Joypad direction = Joypad.None) {
         RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
-        MenuScroll(target, Joypad.A, false);
+        MenuScroll(target, Joypad.A | direction, false);
     }
 
-    public override void SelectMenuItem(int target) {
+    public override void SelectMenuItem(int target, Joypad direction = Joypad.None) {
         RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
-        MenuScroll(target, Joypad.Select, true);
+        MenuScroll(target, Joypad.Select | direction, true);
     }
 
-    public override void ChooseListItem(int target) {
+    public override void ChooseListItem(int target, Joypad direction = Joypad.None) {
         RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
-        ListScroll(target, Joypad.A, false);
+        ListScroll(target, Joypad.A | direction, false);
     }
 
-    public override void SelectListItem(int target) {
+    public override void SelectListItem(int target, Joypad direction = Joypad.None) {
         RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
-        ListScroll(target, Joypad.Select, true);
+        ListScroll(target, Joypad.Select | direction, true);
     }
 }

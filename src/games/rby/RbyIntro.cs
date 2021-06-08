@@ -17,10 +17,8 @@ public static class RbyStratFunctions {
     public const int BiosJoypad = 0x21D;
 
     public static void Execute(this RbyStrat strat, Rby gb) {
-        bool yellow = gb is Yellow;
-
-        Debug.Assert(!(yellow && ((strat >= RbyStrat.Hop0 && strat <= RbyStrat.Hop6) || (strat > RbyStrat.NoPal && strat <= RbyStrat.PalRel))), "Tried to use red/blue exclusive intro strats!");
-        Debug.Assert(!(!yellow && strat >= RbyStrat.Intro0 && strat <= RbyStrat.IntroWait), "Tried to use yellow exclusive intro strats!");
+        Debug.Assert(!(gb.IsYellow && ((strat >= RbyStrat.Hop0 && strat <= RbyStrat.Hop6) || (strat > RbyStrat.NoPal && strat <= RbyStrat.PalRel))), "Tried to use red/blue exclusive intro strats!");
+        Debug.Assert(!(!gb.IsYellow && strat >= RbyStrat.Intro0 && strat <= RbyStrat.IntroWait), "Tried to use yellow exclusive intro strats!");
 
         switch(strat) {
             case RbyStrat.NoPal:
@@ -50,7 +48,7 @@ public static class RbyStratFunctions {
                 gb.Hold(Joypad.Up | Joypad.A, 0x100);
                 break;
             case RbyStrat.GfSkip:
-                gb.Press(yellow ? Joypad.Start : Joypad.Up | Joypad.B | Joypad.Select);
+                gb.Press(gb.IsYellow ? Joypad.Start : Joypad.Up | Joypad.B | Joypad.Select);
                 break;
             case RbyStrat.GfWait:
                 gb.RunUntil("PlayShootingStar.next");

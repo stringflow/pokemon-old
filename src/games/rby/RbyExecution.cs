@@ -75,8 +75,7 @@ public partial class Rby {
         int[] textAddrs = {
             SYM["PrintLetterDelay.checkButtons"] + 0x3,
             SYM["WaitForTextScrollButtonPress.skipAnimation"] + 0xa,
-            SYM["HoldTextDisplayOpen"] + 0x3,
-            (SYM["ShowPokedexDataInternal.waitForButtonPress"] & 0xffff) + 0x3,
+            SYM["HoldTextDisplayOpen"] + 0x3,(SYM["ShowPokedexDataInternal.waitForButtonPress"] & 0xffff) + 0x3,
             SYM["TextCommand_PAUSE"] + 0x4,
         };
 
@@ -219,19 +218,19 @@ public partial class Rby {
         ChooseMenuItem(0);
     }
 
-    public virtual void ChooseMenuItem(int target) {
+    public virtual void ChooseMenuItem(int target, Joypad direction = Joypad.None) {
         throw new NotImplementedException();
     }
 
-    public virtual void SelectMenuItem(int target) {
+    public virtual void SelectMenuItem(int target, Joypad direction = Joypad.None) {
         throw new NotImplementedException();
     }
 
-    public virtual void ChooseListItem(int target) {
+    public virtual void ChooseListItem(int target, Joypad direction = Joypad.None) {
         throw new NotImplementedException();
     }
 
-    public virtual void SelectListItem(int target) {
+    public virtual void SelectListItem(int target, Joypad direction = Joypad.None) {
         throw new NotImplementedException();
     }
 

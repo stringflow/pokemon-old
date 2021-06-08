@@ -13,7 +13,6 @@ public class RbyItem : ROMObject {
             ExecutionPointer = game.SYM["ItemUseTMHM"];
         }
 
-
         if(game.SYM.Contains(ExecutionPointer)) ExecutionPointerLabel = game.SYM[ExecutionPointer];
     }
 }

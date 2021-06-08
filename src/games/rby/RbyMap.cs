@@ -128,7 +128,7 @@ public class RbyWarp {
         Allowed = false;
 
         if(DestinationMap == 0xff) {
-            if(game is RedBlue) DestinationMap = RedBlue.wLastMapDestinations[(map.Name, index)];
+            if(game is RedBlue || game is RedBlueForce) DestinationMap = RedBlue.wLastMapDestinations[(map.Name, index)];
             else DestinationMap = Yellow.wLastMapDestinations[(map.Name, index)];
         }
     }

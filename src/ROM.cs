@@ -21,6 +21,19 @@ public class ROM {
         get { return Header[0x14e] << 8 | Header[0x14f]; }
     }
 
+    public string Title {
+        get {
+            ByteStream data = From(0x134);
+            string title = "";
+            while(true) {
+                byte b = data.u8();
+                if(b >= 128 || b == 0) break;
+                title += (char) b;
+            }
+            return title;
+        }
+    }
+
     /*
         The raw ROM image is rearranged in the following way:
             home bank
@@ -257,6 +270,9 @@ public class SYM : Map<string, int> {
 
     public SYM(string file) : base() {
         string[] lines = File.ReadAllLines(file);
+        int previousBank = -1;
+        int previousAddr = -1;
+        string previousLabel = "";
         for(int i = 0; i < lines.Length; i++) {
             string line = lines[i].Trim();
             // Any line starting with a semicolon is a comment.
@@ -264,10 +280,22 @@ public class SYM : Map<string, int> {
 
             // Format: bb:aaaa label
             Match match = Regex.Match(line, "([0-9-a-f]+):([0-9-a-f]+) (.+)");
-            byte bank = Convert.ToByte(match.Groups[1].Value, 16);
-            ushort addr = Convert.ToUInt16(match.Groups[2].Value, 16);
+            int bank = Convert.ToInt32(match.Groups[1].Value, 16);
+            int addr = Convert.ToInt32(match.Groups[2].Value, 16);
             string label = match.Groups[3].Value;
             Add(label, bank << 16 | addr);
+
+            if(previousBank != -1) {
+                for(int newAddr = previousAddr + 1; newAddr < addr && newAddr <= 0x8000; newAddr++) {
+                    int offset = (newAddr - previousAddr);
+                    int newAddress = previousBank << 16 | newAddr;
+                    Add(string.Format("{0}+{1:x4}", previousLabel, offset), newAddress);
+                }
+            }
+
+            previousBank = bank;
+            previousAddr = addr;
+            previousLabel = label;
         }
     }
 }

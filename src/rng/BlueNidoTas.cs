@@ -122,7 +122,6 @@ public class BlueNidoTas : RedBlueForce {
             ForceTurn(new RbyTurn("TACKLE"), new RbyTurn("GROWL", Miss));
             ForceTurn(new RbyTurn("TACKLE"), new RbyTurn("GROWL", Miss));
             ForceTurn(new RbyTurn("TACKLE"));
-
             ClearText(); // sneaky joypad call
         });
 
@@ -130,7 +129,6 @@ public class BlueNidoTas : RedBlueForce {
             MoveTo("ViridianCity", 29, 19);
             ClearText(); // Receive parcel
             TalkTo("OaksLab", 5, 2, Action.Right); // give parcel
-            ClearText(); // sneaky joypad call
         });
 
         CacheState("nidoran", () => {
@@ -328,7 +326,6 @@ public class BlueNidoTas : RedBlueForce {
             // RIVAL 2
             MoveTo("CeruleanCity", 21, 6, Action.Up);
             ClearText();
-            ClearText(); // sneaky joypad call
             ForceTurn(new RbyTurn("HORN ATTACK"), new RbyTurn("GUST", 1));
             MoveSwap("HORN ATTACK", "BUBBLEBEAM");
             ForceTurn(new RbyTurn("BUBBLEBEAM", Crit));
