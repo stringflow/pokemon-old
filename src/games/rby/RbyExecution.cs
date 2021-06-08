@@ -129,10 +129,11 @@ public partial class Rby {
             } else {
                 // If the call did not originate from 'PrintLetterDelay', advance the textbox with the opposite button used in the previous frame.
                 byte previous = (byte) (CpuRead("hJoyLast") & (byte) (Joypad.A | Joypad.B));
-                Joypad advance = previous == 0 ? Joypad.A                   // If neither A or B have been pressed on the previous frame, default to clear the text box with A.
-                                               : (Joypad) (previous ^ 0x3); // Otherwise clear with the opposite button. This is achieved by XORing the value by 3.
-                                                                            // (Joypad.A) 01 xor 11 = 10 (Joypad.B)
-                                                                            // (Joypad.B) 10 xor 11 = 01 (Joypad.A)
+                Joypad advance;
+                if(previous == 0) advance = cameFrom == textAddrs[1] ? Joypad.B : Joypad.A; // If neither A or B have been pressed on the previous frame, clear the textbox with B if it's a "60 fps" textbox.
+                else advance = (Joypad) (previous ^ 0x3); // Otherwise clear with the opposite button. This is achieved by XORing the value by 3.
+                                                          // (Joypad.A) 01 xor 11 = 10 (Joypad.B)
+                                                          // (Joypad.B) 10 xor 11 = 01 (Joypad.A)
                 Inject(advance);
                 RunFor(1);
                 clearCounter++;
