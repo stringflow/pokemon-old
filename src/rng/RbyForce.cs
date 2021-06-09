@@ -346,7 +346,7 @@ public class RbyForce : Rby {
                 Action action = (Action) (0x10 << i);
                 if(preferredEndDirection != Action.None && action != preferredEndDirection.Opposite()) continue;
 
-                RbyTile t1 = endTile.Neighbor(action);
+                RbyTile t1 = GetNeighbor(endTile, action);
                 if(t1 != null && costs.ContainsKey(t1)) {
                     int cost = costs[t1] + BonkCost;
                     if(minCost > cost) {
@@ -355,7 +355,7 @@ public class RbyForce : Rby {
                         endAction = action.Opposite();
                     }
 
-                    RbyTile t2 = t1.Neighbor(action);
+                    RbyTile t2 = GetNeighbor(t1, action);
                     if(t2 != null && costs.ContainsKey(t2)) {
                         cost = costs[t2] + CalcStepCost(startTile, biking, false, false, t2, action);
                         if(minCost > cost) {
@@ -368,7 +368,7 @@ public class RbyForce : Rby {
             }
         } else if(preferredEndDirection != Action.None) {
             endAction = preferredEndDirection;
-            newEndTile = endTile.Neighbor(preferredEndDirection.Opposite());
+            newEndTile = GetNeighbor(endTile, preferredEndDirection.Opposite());
         }
 
         if(newEndTile != null) {
@@ -521,7 +521,7 @@ public class RbyForce : Rby {
 
             RbyTile current = trainer.Map[trainer.X, trainer.Y];
             for(int i = 0; i < range && current != null; i++) {
-                current = current.Neighbor(trainer.Direction);
+                current = GetNeighbor(current, trainer.Direction);
                 if(current == tile) {
                     return true;
                 }
@@ -582,7 +582,7 @@ public class RbyForce : Rby {
     public Action DirectionalWarpCheck(RbyTile warpTile) {
         for(int i = 0; i < 4; i++) {
             Action action = (Action) (0x10 << i);
-            RbyTile neighbor = warpTile.Neighbor(action);
+            RbyTile neighbor = GetNeighbor(warpTile, action);
             byte collision;
             if(neighbor == null) {
                 int offs;
@@ -1116,6 +1116,13 @@ public class RbyForce : Rby {
             E = 0x00;
             RunFor(1);
         }
+    }
+
+    public void Dig() {
+        UseOverworldMove("DIG");
+        RunUntil("DisableLCD");
+        RunFor(1);
+        RunUntil("DisableLCD");
     }
 
     public void UseOverworldMove(string name) {
