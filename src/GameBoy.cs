@@ -268,6 +268,11 @@ public partial class GameBoy : IDisposable {
     public void SetSpeedupFlags(SpeedupFlags flags) {
         Libgambatte.gambatte_setspeedupflags(Handle, flags);
     }
+    
+    // Adjusts the assumed clock speed of the CPU compared to the RTC
+    public void SetRTCDivisorOffset(int offset) {
+        Libgambatte.gambatte_setrtcdivisoroffset(Handle, offset);
+    }
 
     // Helper functions that translate SYM labels to their respective addresses.
     public int RunUntil(params string[] addrs) {
