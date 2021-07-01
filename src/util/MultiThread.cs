@@ -31,10 +31,10 @@ public static class MultiThread {
         });
     }
 
-    public static Gb[] MakeThreads<Gb>(int numThreads) where Gb : GameBoy {
+    public static Gb[] MakeThreads<Gb>(int numThreads, string savFile = null) where Gb : GameBoy {
         Gb[] gbs = new Gb[numThreads];
         for(int i = 0; i < numThreads; i++) {
-            gbs[i] = (Gb) Activator.CreateInstance(typeof(Gb), args: true);
+            gbs[i] = (Gb) Activator.CreateInstance(typeof(Gb), args: new object[] { savFile, true });
         }
         return gbs;
     }

@@ -236,8 +236,8 @@ public class OpenGLRenderContext : RenderContext {
 
     public unsafe void ReadBuffer(byte[] dest) {
         byte[] buf = new byte[dest.Length];
-        fixed(byte* data = buf) Gl.ReadPixels(0, 0, Renderer.Window.Width, Renderer.Window.Height, OpenGL.PixelFormat.Rgb, PixelType.UnsignedByte, (IntPtr) data);
-        int scanlineSize = Renderer.Window.Width * 3;
+        fixed(byte* data = buf) Gl.ReadPixels(0, 0, Renderer.Window.Width, Renderer.Window.Height, OpenGL.PixelFormat.Rgba, PixelType.UnsignedByte, (IntPtr) data);
+        int scanlineSize = Renderer.Window.Width * 4;
         for(int i = 0; i < Renderer.Window.Height; i++) {
             Array.Copy(buf, i * scanlineSize, dest, (Renderer.Window.Height - i - 1) * scanlineSize, scanlineSize);
         }

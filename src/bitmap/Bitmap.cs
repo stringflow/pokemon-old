@@ -5,7 +5,7 @@ public class Bitmap {
 
     public int Width;
     public int Height;
-    public byte[] Pixels; // In 32-bit rgb format
+    public byte[] Pixels;
 
     public Bitmap(int width, int height) : this(width, height, new byte[width * height * 4]) {
     }
@@ -13,11 +13,12 @@ public class Bitmap {
     public Bitmap(int width, int height, byte[] pixels) {
         Width = width;
         Height = height;
-        Pixels = pixels;
+        Pixels = new byte[pixels.Length];
+        pixels.CopyTo(Pixels, 0);
     }
 
     public Bitmap(string file) {
-        ByteStream stream = new ByteStream(File.ReadAllBytes(file));
+        ReadStream stream = new ReadStream(File.ReadAllBytes(file));
         string extension = Path.GetExtension(file);
         switch(extension.ToLower()) {
             case ".bmp": BMP.Decode(stream, this); break;
@@ -28,7 +29,7 @@ public class Bitmap {
         }
     }
 
-    public void Save(string file) {
+    public bool Save(string file) {
         string extension = Path.GetExtension(file);
         byte[] data = null;
         switch(extension.ToLower()) {
@@ -39,7 +40,12 @@ public class Bitmap {
                 break;
         }
 
-        File.WriteAllBytes(file, data);
+        try {
+            File.WriteAllBytes(file, data);
+            return true;
+        } catch(Exception) {
+            return false;
+        }
     }
 
     public byte this[int offset] {

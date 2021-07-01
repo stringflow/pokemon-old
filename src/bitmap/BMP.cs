@@ -28,7 +28,7 @@ public static class BMP {
         public uint NumImportantColors;
     }
 
-    public static void Decode(ByteStream data, Bitmap dest) {
+    public static void Decode(ReadStream data, Bitmap dest) {
         BMPHeader header = data.Struct<BMPHeader>();
         Debug.Assert(header.Signature == BMPSignature, "Specified file was not a BMP file.");
         Debug.Assert(header.Size == InfoHeaderSize, "The BMP file contains an unsupported info header.");

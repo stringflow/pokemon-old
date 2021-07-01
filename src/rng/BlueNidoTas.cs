@@ -29,7 +29,7 @@ public class BlueNidoTas : RedBlueForce {
             You can force execution of all subsequent CacheState blocks by calling 'ClearCache();'
         */
         CacheState("rival1", () => {
-            new RbyIntroSequence(RbyStrat.NoPal, RbyStrat.GfSkip, RbyStrat.Hop0, RbyStrat.TitleSkip, RbyStrat.NewGame).Execute(this);
+            new RbyIntroSequence(RbyStrat.NoPal, RbyStrat.GfSkip, RbyStrat.Hop0, RbyStrat.Title0, RbyStrat.NewGame).Execute(this);
 
             /*
                 ClearText clears all textboxes until user input is required.
@@ -972,7 +972,6 @@ public class BlueNidoTas : RedBlueForce {
             // LORELEI
             MoveTo("IndigoPlateauLobby", 8, 0);
             TalkTo("LoreleisRoom", 5, 2, Action.Right);
-            ClearText();
             ForceTurn(new RbyTurn("FISSURE"));
             ForceTurn(new RbyTurn("FISSURE"));
             ForceTurn(new RbyTurn("HORN DRILL"));
@@ -984,7 +983,6 @@ public class BlueNidoTas : RedBlueForce {
             // BRUNO
             Execute("U U U");
             TalkTo("BrunosRoom", 5, 2, Action.Right);
-            ClearText();
             ForceTurn(new RbyTurn("BUBBLEBEAM"));
             ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
             ForceTurn(new RbyTurn("THUNDERBOLT", Crit));
@@ -996,7 +994,6 @@ public class BlueNidoTas : RedBlueForce {
             // AGATHA
             Execute("U U U");
             TalkTo("AgathasRoom", 5, 2, Action.Right);
-            ClearText();
             ForceTurn(new RbyTurn("X SPEED"), new RbyTurn("HYPNOSIS", Miss));
             ForceTurn(new RbyTurn("FISSURE"));
             ForceTurn(new RbyTurn("THUNDERBOLT", Crit));

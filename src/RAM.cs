@@ -229,4 +229,15 @@ public class RAMStream {
     public void Seek(int amount) {
         Position += amount;
     }
+
+    // Reads until the value of 'terminator' is encountered.
+    public byte[] Until(byte terminator, bool includeTerminator = true) {
+        int length = 0;
+        do {
+            length++;
+        } while(u8() != terminator);
+        Seek(-length);
+        if(!includeTerminator) length--;
+        return Read(length);
+    }
 }

@@ -44,7 +44,7 @@ public static class Totodile {
         baseSave[0x2d69] = (byte) ((checksum) & 0xff);
         baseSave[0x2d6a] = (byte) ((checksum >> 8) & 0xff);
 
-        File.WriteAllBytes("roms/pokegold.sav", baseSave);
+        File.WriteAllBytes("roms/gold_toto_temp.sav", baseSave);
     }
 
     public static GscPokemon Textboxes(Gsc gb) {
@@ -60,7 +60,7 @@ public static class Totodile {
 
     public static void Test(byte x, byte y, byte hour, byte minute, byte momStep, byte audio, byte frameType, byte menuAccount, byte igt, GscIntroSequence intro, string path, string recordName = "") {
         MakeSave(x, y, hour, minute, momStep, audio, frameType, menuAccount, igt);
-        Gold gb = new Gold(true);
+        Gold gb = new Gold();
         if(recordName != "") gb.Record(recordName);
         gb.SetTimeSec(120);
         intro.ExecuteUntilIGT(gb);
@@ -71,7 +71,7 @@ public static class Totodile {
         gb.Dispose();
     }
 
-    public static void EvaluateTototdile(Gold gb, DFState<GscTile> state) {
+    public static void EvaluateTototdile(Gold gb, DFState<GscMap, GscTile> state) {
         GscPokemon toto = Textboxes(gb);
         int atk = toto.DVs.Attack;
         int def = toto.DVs.Defense;
@@ -114,22 +114,22 @@ public static class Totodile {
             starsStr = "[   ]";
         }
 
-        if(stars >= 8) {
-            lock(Writer) {
-                Writer.WriteLine("{0} [{1} cost] {2}- {3:x4}", starsStr, state.WastedFrames, state.Log, toto.DVs);
-                Writer.Flush();
-            }
+        //if(stars >= 8) {
+        lock(Writer) {
+            Writer.WriteLine("{0} [{1} cost] {2}- {3:x4}", starsStr, state.WastedFrames, state.Log, toto.DVs);
+            Writer.Flush();
         }
+        //  }
     }
 
     public static void StartSearch(int numThreads) {
         bool[] threadsRunning = new bool[numThreads];
         Thread[] threads = new Thread[numThreads];
-        Gold dummyGb = new Gold(true);
+        Gold dummyGb = new Gold();
         GscMap map = dummyGb.Maps[6149];
         map.Sprites.Remove(5, 3); // Remove police officer (https://gunnermaniac.com/pokeworld2?map=6149#5/3)
-        Pathfinding.GenerateEdges(map, 0, 17, map.Tileset.LandPermissions, Action.Right | Action.Down | Action.StartB, map[7, 5]);
-        Pathfinding.GenerateEdges(map, 1, 17, map.Tileset.LandPermissions, Action.StartB, map[7, 4]);
+        Pathfinding.GenerateEdges<GscMap, GscTile>(dummyGb, 0, map[7, 5], Action.Right | Action.Down | Action.StartB);
+        Pathfinding.GenerateEdges<GscMap, GscTile>(dummyGb, 1, map[7, 4], Action.StartB);
 
         map[4, 5].RemoveEdge(0, Action.Down);
         map[4, 5].RemoveEdge(0, Action.Down | Action.A); // Don't walk into cutscene
@@ -142,7 +142,7 @@ public static class Totodile {
         map[4, 2].RemoveEdge(0, Action.Down | Action.A);
         map[5, 3].RemoveEdge(0, Action.Down | Action.A);
 
-        map[7, 5].AddEdge(0, new Edge<GscTile>() {
+        map[7, 5].AddEdge(0, new Edge<GscMap, GscTile>() {
             Action = Action.Up,
             NextTile = map[7, 4],
             NextEdgeset = 1,
@@ -178,7 +178,7 @@ public static class Totodile {
                                             Gold gb;
                                             lock(startTiles) {
                                                 MakeSave(state.tile.X, state.tile.Y, state.hour, state.minute, state.momStep, state.audio, state.frameType, state.menuAccount, state.igt);
-                                                gb = new Gold(true);
+                                                gb = new Gold("roms/gold_toto_temp.sav");
                                                 gb.SetTimeSec(120);
                                                 gb.Hold(Joypad.Left, 0x100);
                                             }
@@ -196,7 +196,7 @@ public static class Totodile {
                                                         int introCost = mmBack * 83 + fsBack * 101 + delay;
                                                         if(introCost > MaxCost) break;
                                                         gb.Hold(Joypad.A, "OWPlayerInput");
-                                                        DFParameters<Gold, GscTile> parameters = new DFParameters<Gold, GscTile>() {
+                                                        DFParameters<Gold, GscMap, GscTile> parameters = new DFParameters<Gold, GscMap, GscTile>() {
                                                             NoEncounterSS = 1,
                                                             PruneAlreadySeenStates = false,
                                                             MaxCost = MaxCost - introCost,
@@ -206,7 +206,9 @@ public static class Totodile {
                                                             EndEdgeSet = 1,
                                                             FoundCallback = state => EvaluateTototdile(gb, state),
                                                         };
-                                                        DepthFirstSearch.StartSearch(new Gold[] { gb }, parameters, tile, 0, new byte[][] { gb.SaveState() });
+                                                        IGTResults results = new IGTResults(1);
+                                                        results[0] = new IGTState(gb, true, 0);
+                                                        DepthFirstSearch.StartSearch(new Gold[] { gb }, parameters, tile, 0, results);
                                                         gb.LoadState(delayState);
                                                         gb.AdvanceFrame(Joypad.Left);
                                                         delayState = gb.SaveState();

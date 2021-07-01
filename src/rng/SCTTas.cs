@@ -335,7 +335,6 @@ public class SCTTas : RedBlueForce {
             // LORELEI
             MoveTo("IndigoPlateauLobby", 8, 0);
             TalkTo("LoreleisRoom", 5, 2, Action.Right);
-            ClearText();
             ForceTurn(new RbyTurn("FISSURE"));
             ForceTurn(new RbyTurn("FISSURE"));
             ForceTurn(new RbyTurn("FISSURE"));
@@ -347,7 +346,6 @@ public class SCTTas : RedBlueForce {
             // BRUNO
             Execute("U U U");
             TalkTo("BrunosRoom", 5, 2, Action.Right);
-            ClearText();
             ForceTurn(new RbyTurn("BLIZZARD"));
             ForceTurn(new RbyTurn("BLIZZARD", Crit));
             ForceTurn(new RbyTurn("BLIZZARD", Crit));
@@ -362,7 +360,6 @@ public class SCTTas : RedBlueForce {
             // AGATHA
             Execute("U U U");
             TalkTo("AgathasRoom", 5, 2, Action.Right);
-            ClearText();
             ForceTurn(new RbyTurn("FISSURE"));
             ForceTurn(new RbyTurn("HORN DRILL"));
             ForceTurn(new RbyTurn("FISSURE"));

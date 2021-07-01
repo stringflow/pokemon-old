@@ -1,36 +1,39 @@
 using System;
-using System.Linq;
+using System.IO;
 using System.Collections.Generic;
+using System.Linq;
 
-public class DFParameters<Gb, T> where Gb : GameBoy
-                                 where T : Tile<T> {
+public class DFParameters<Gb, M, T> where Gb : PokemonGame
+                                    where M : Map<M, T>
+                                    where T : Tile<M, T> {
 
     public bool PruneAlreadySeenStates = true;
     public int MaxCost = 0;
     public int NoEncounterSS = 1;
-    public int EncounterSS = 0;
+    public int RNGSS = -1;
     public string LogStart = "";
     public T[] EndTiles = null;
     public int EndEdgeSet = 0;
-    public Func<Gb, bool> EncounterCallback = null;
-    public Action<DFState<T>> FoundCallback = null;
+    public Action<DFState<M, T>> FoundCallback;
 }
 
-public class DFState<T> where T : Tile<T> {
+public class DFState<M, T> where M : Map<M, T>
+                           where T : Tile<M, T> {
 
     public T Tile;
     public int EdgeSet;
     public int WastedFrames;
     public Action BlockedActions;
+    public int APressCounter;
     public IGTResults IGT;
     public string Log;
 
     public override int GetHashCode() {
         unchecked {
             const int prime = 92821;
-            int hash = prime + Tile.X;
+            int hash = prime + Tile.Map.Id;
+            hash = hash * prime + Tile.X;
             hash = hash * prime + Tile.Y;
-            hash = hash * prime + Tile.Collision;
             hash = hash * prime + IGT.MostCommonHRA;
             hash = hash * prime + IGT.MostCommonHRS;
             hash = hash * prime + IGT.MostCommonDivider;
@@ -41,47 +44,40 @@ public class DFState<T> where T : Tile<T> {
 
 public static class DepthFirstSearch {
 
-    public static void StartSearch<Gb, T>(Gb[] gbs, DFParameters<Gb, T> parameters, T startTile, int startEdgeSet, byte[][] states) where Gb : GameBoy
-                                                                                                                                    where T : Tile<T> {
-        IGTResults initialState = new IGTResults(states.Length);
-        for(int i = 0; i < states.Length; i++) {
-            initialState[i] = new IGTState();
-            initialState[i].State = states[i];
-            initialState[i].HRA = -1;
-            initialState[i].HRS = -1;
-            initialState[i].Divider = -1;
-        }
-
-        RecursiveSearch(gbs, parameters, new DFState<T> {
+    public static void StartSearch<Gb, M, T>(Gb[] gbs, DFParameters<Gb, M, T> parameters, T startTile, int startEdgeSet, IGTResults initialState) where Gb : PokemonGame
+                                                                                                                                                  where M : Map<M, T>
+                                                                                                                                                  where T : Tile<M, T> {
+        RecursiveSearch(gbs, parameters, new DFState<M, T> {
             Tile = startTile,
             EdgeSet = startEdgeSet,
             WastedFrames = 0,
             Log = parameters.LogStart,
-            BlockedActions = Action.A,
+            APressCounter = 1,
             IGT = initialState,
         }, new HashSet<int>());
     }
 
-    private static void RecursiveSearch<Gb, T>(Gb[] gbs, DFParameters<Gb, T> parameters, DFState<T> state, HashSet<int> seenStates) where Gb : GameBoy
-                                                                                                                                    where T : Tile<T> {
+    private static void RecursiveSearch<Gb, M, T>(Gb[] gbs, DFParameters<Gb, M, T> parameters, DFState<M, T> state, HashSet<int> seenStates) where Gb : PokemonGame
+                                                                                                                                             where M : Map<M, T>
+                                                                                                                                             where T : Tile<M, T> {
         if(parameters.EndTiles != null && state.EdgeSet == parameters.EndEdgeSet && parameters.EndTiles.Any(t => t.X == state.Tile.X && t.Y == state.Tile.Y)) {
-            if(parameters.FoundCallback != null) parameters.FoundCallback(state);
-            else Console.WriteLine(state.Log);
+            if(parameters.FoundCallback != null) {
+                parameters.FoundCallback(state);
+            }
         }
 
         if(parameters.PruneAlreadySeenStates && !seenStates.Add(state.GetHashCode())) {
             return;
         }
 
-        byte[][] states = state.IGT.States;
-
-        foreach(Edge<T> edge in state.Tile.Edges[state.EdgeSet]) {
+        foreach(Edge<M, T> edge in state.Tile.Edges[state.EdgeSet]) {
             if(state.WastedFrames + edge.Cost > parameters.MaxCost) continue;
             if((state.BlockedActions & edge.Action) > 0) continue;
+            if(edge.Action == Action.A && state.APressCounter > 0) continue;
 
-            IGTResults results = GameBoy.IGTCheckParallel<Gb>(gbs, states, gb => gb.Execute(edge.Action) == gb.OverworldLoopAddress, parameters.EncounterCallback == null ? parameters.NoEncounterSS : 0);
+            IGTResults results = PokemonGame.IGTCheckParallel<Gb>(gbs, state.IGT, gb => gb.Execute(edge.Action) == gb.OverworldLoopAddress, parameters.NoEncounterSS);
 
-            DFState<T> newState = new DFState<T>() {
+            DFState<M, T> newState = new DFState<M, T>() {
                 Tile = edge.NextTile,
                 EdgeSet = edge.NextEdgeset,
                 Log = state.Log + edge.Action.LogString() + " ",
@@ -90,28 +86,18 @@ public static class DepthFirstSearch {
             };
 
             int noEncounterSuccesses = results.TotalSuccesses;
-            if(parameters.EncounterCallback != null) {
-                int encounterSuccesses = results.TotalFailures;
-                for(int i = 0; i < results.NumIGTFrames && encounterSuccesses >= parameters.EncounterSS; i++) {
-                    gbs[0].LoadState(results.States[i]);
-                    if(parameters.EncounterCallback(gbs[0])) encounterSuccesses++;
-                }
-
-                if(encounterSuccesses >= parameters.EncounterSS) {
-                    if(parameters.FoundCallback != null) parameters.FoundCallback(newState);
-                    else Console.WriteLine(state.Log);
-                }
-            }
-
             if(noEncounterSuccesses >= parameters.NoEncounterSS) {
-                Action blockedActions = state.BlockedActions;
+                int rngSuccesses = results.RNGSuccesses(0x9);
+                if(rngSuccesses >= parameters.RNGSS) {
+                    newState.APressCounter = edge.Action == Action.A ? 2 : Math.Max(state.APressCounter - 1, 0);
 
-                if(edge.Action == Action.A) blockedActions |= Action.StartB;
-                if((edge.Action & Action.A) > 0) blockedActions |= Action.A;
-                else blockedActions &= ~(Action.A | Action.StartB);
+                    Action blockedActions = state.BlockedActions;
+                    if((edge.Action & Action.A) > 0) blockedActions |= Action.A;
+                    else blockedActions &= ~(Action.A | Action.StartB);
+                    newState.BlockedActions = blockedActions;
 
-                newState.BlockedActions = blockedActions;
-                RecursiveSearch(gbs, parameters, newState, seenStates);
+                    RecursiveSearch(gbs, parameters, newState, seenStates);
+                }
             }
         }
     }

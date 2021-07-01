@@ -23,7 +23,7 @@ public class ROM {
 
     public string Title {
         get {
-            ByteStream data = From(0x134);
+            ReadStream data = From(0x134);
             string title = "";
             while(true) {
                 byte b = data.u8();
@@ -86,34 +86,34 @@ public class ROM {
     }
 
     // Returns a stream of the ROM data seeked to the specified offset.
-    public ByteStream From(int offset) {
-        ByteStream stream = new ByteStream(Data);
+    public ReadStream From(int offset) {
+        ReadStream stream = new ReadStream(Data);
         stream.Seek(offset, SeekOrigin.Begin);
         return stream;
     }
 
     public ushort u16le(int offset) {
-        return (ushort) (Data[offset] | (Data[offset + 1] << 8));
+        return Data.u16le(offset);
     }
 
     public ushort u16be(int offset) {
-        return (ushort) ((Data[offset] << 8) | Data[offset]);
+        return Data.u16be(offset);
     }
 
     public int u24le(int offset) {
-        return (ushort) (Data[offset] | (Data[offset + 1] << 8) | (Data[offset + 2] << 16));
+        return Data.u24le(offset);
     }
 
     public int u24be(int offset) {
-        return (ushort) ((Data[offset] << 16) | (Data[offset + 1] << 8) | Data[offset + 2]);
+        return Data.u16be(offset);
     }
 
     public uint u32le(int offset) {
-        return (uint) (Data[offset] | (Data[offset + 1] << 8) | (Data[offset + 2] << 16) | (Data[offset + 3] << 24));
+        return Data.u32le(offset);
     }
 
     public uint u32be(int offset) {
-        return (uint) ((Data[offset] << 24) | (Data[offset + 1] << 16) | (Data[offset + 2] << 8) | Data[offset + 3]);
+        return Data.u32be(offset);
     }
 
     public byte[] Subarray(int offset, int length) {
@@ -125,7 +125,7 @@ public class ROM {
         set { Data[Symbols[addr]] = value; }
     }
 
-    public ByteStream From(string addr) {
+    public ReadStream From(string addr) {
         return From(Symbols[addr]);
     }
 
@@ -158,115 +158,7 @@ public class ROM {
     }
 }
 
-public class ByteStream : MemoryStream {
-
-    public bool LowerNybble;
-
-    public ByteStream() : base() {
-    }
-
-    public ByteStream(byte[] data) : base(data) {
-    }
-
-    // Peeks the current byte.
-    public byte Peek() {
-        byte ret = (byte) ReadByte();
-        Seek(-1, SeekOrigin.Current);
-        return ret;
-    }
-
-    // Skips 'amount' bytes in the 
-    public void Seek(long amount) {
-        Seek(amount, SeekOrigin.Current);
-    }
-
-    // Reads until the value of 'terminator' is encountered.
-    public byte[] Until(byte terminator, bool includeTerminator = true) {
-        int length = 0;
-        do {
-            length++;
-        } while(ReadByte() != terminator);
-        Seek(-length, SeekOrigin.Current);
-        if(!includeTerminator) length--;
-        byte[] bytes = new byte[length];
-        Read(bytes);
-        return bytes;
-    }
-
-    // Reads 'length' number of bytes.
-    public byte[] Read(int length) {
-        byte[] bytes = new byte[length];
-        Read(bytes);
-        return bytes;
-    }
-
-    // Reads 'length' number of ushorts in the little-endian format.
-    public ushort[] ReadLE(int length) {
-        ushort[] ushorts = new ushort[length];
-        for(int i = 0; i < length; i++) {
-            ushorts[i] = u16le();
-        }
-        return ushorts;
-    }
-
-    // Reads 'length' number of ushorts in the big-endian format.
-    public ushort[] ReadBE(int length) {
-        ushort[] ushorts = new ushort[length];
-        for(int i = 0; i < length; i++) {
-            ushorts[i] = u16be();
-        }
-        return ushorts;
-    }
-
-    // Consumes one nybble (4 bits) worth of data.
-    public byte Nybble() {
-        byte ret = (byte) (LowerNybble ? u8() & 0xf : Peek() >> 4);
-        LowerNybble = !LowerNybble;
-        return ret;
-    }
-
-    // Consumes one byte of data.
-    public byte u8() {
-        return (byte) ReadByte();
-    }
-
-    // Consumes two bytes of data in the little-endian format.
-    public ushort u16le() {
-        return (ushort) (ReadByte() | (ReadByte() << 8));
-    }
-
-    // Consumes two bytes of data in the big-endian format.
-    public ushort u16be() {
-        return (ushort) ((ReadByte() << 8) | ReadByte());
-    }
-
-    // Consumes three bytes of data in the little-endian format.
-    public int u24le() {
-        return (int) (ReadByte() | (ReadByte() << 8) | (ReadByte() << 16));
-    }
-
-    // Consumes three bytes of data in the big-endian format.
-    public int u24be() {
-        return (int) ((ReadByte() << 16) | (ReadByte() << 8) | ReadByte());
-    }
-
-    // Consumes four bytes of data in the little-endian format.
-    public uint u32le() {
-        return (uint) (ReadByte() | (ReadByte() << 8) | (ReadByte() << 16) | (ReadByte() << 24));
-    }
-
-    // Consumes four bytes of data in the big-endian format.
-    public uint u32be() {
-        return (uint) ((ReadByte() << 24) | (ReadByte() << 16) | (ReadByte() << 8) | ReadByte());
-    }
-
-    // Consumes the specified struct.
-    public T Struct<T>(bool bigEndian = false) where T : unmanaged {
-        return Read(Marshal.SizeOf<T>()).ReadStruct<T>(0, bigEndian);
-    }
-}
-
-public class SYM : Map<string, int> {
+public class SYM : BiDictionary<string, int> {
 
     public SYM(string file) : base() {
         string[] lines = File.ReadAllLines(file);

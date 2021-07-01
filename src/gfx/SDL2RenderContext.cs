@@ -58,7 +58,7 @@ public class SDL2RenderContext : RenderContext {
 
     public unsafe void ReadBuffer(byte[] dest) {
         SDL_Rect rect = new SDL_Rect { x = 0, y = 0, w = Renderer.Window.Width, h = Renderer.Window.Height };
-        fixed(byte* data = dest) SDL_RenderReadPixels(Context, ref rect, SDL_PIXELFORMAT_RGB24, (IntPtr) data, Renderer.Window.Width * 3);
+        fixed(byte* data = dest) SDL_RenderReadPixels(Context, ref rect, SDL_PIXELFORMAT_RGBA8888, (IntPtr) data, Renderer.Window.Width * 4);
     }
 
     public ulong CreateTexture(int width, int height, PixelFormat format) {

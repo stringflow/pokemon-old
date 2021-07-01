@@ -64,12 +64,11 @@ public partial class GameBoy : IDisposable {
 
     public ROM ROM;
     public SYM SYM;
-    public Dictionary<string, int> SaveStateLabels;
     public Scene Scene;
     public ulong EmulatedSamples;
 
     // Returns the current cycle-based time counter as dividers. (2^21/sec)
-    public int TimeNow {
+    public ulong TimeNow {
         get { return Libgambatte.gambatte_timenow(Handle); }
     }
 
@@ -133,9 +132,17 @@ public partial class GameBoy : IDisposable {
         get { return Libgambatte.gambatte_getdivstate(Handle); }
     }
 
-    public GameBoy(string biosFile, string romFile, SpeedupFlags speedupFlags = SpeedupFlags.None) {
+    public GameBoy(string biosFile, string romFile, string savFile = null, SpeedupFlags speedupFlags = SpeedupFlags.None) {
         ROM = new ROM(romFile);
         Debug.Assert(ROM.HeaderChecksumMatches(), "Cartridge header checksum mismatch!");
+
+        string romName = Path.GetFileNameWithoutExtension(romFile);
+
+        if(savFile == null || savFile == "") {
+            File.Delete("roms/" + romName + ".sav");
+        } else {
+            File.WriteAllBytes("roms/" + romName + ".sav", File.ReadAllBytes(savFile));
+        }
 
         Handle = Libgambatte.gambatte_create();
         Debug.Assert(Libgambatte.gambatte_loadbios(Handle, biosFile, 0x900, 0x31672598) == 0, "Unable to load BIOS!");
@@ -147,7 +154,7 @@ public partial class GameBoy : IDisposable {
         InputGetter = () => CurrentJoypad;
         Libgambatte.gambatte_setinputgetter(Handle, InputGetter);
 
-        string symPath = "symfiles/" + Path.GetFileNameWithoutExtension(romFile) + ".sym";
+        string symPath = "symfiles/" + romName + ".sym";
         if(File.Exists(symPath)) {
             SYM = new SYM(symPath);
             ROM.Symbols = SYM;
@@ -155,20 +162,6 @@ public partial class GameBoy : IDisposable {
 
         SetSpeedupFlags(speedupFlags);
         StateSize = Libgambatte.gambatte_savestate(Handle, null, 160, null);
-
-        SaveStateLabels = new Dictionary<string, int>();
-        byte[] state = SaveState();
-        ByteStream data = new ByteStream(state);
-        data.Seek(3);
-        data.Seek(data.u24be());
-        while(data.Position < state.Length) {
-            string label = "";
-            byte character;
-            while((character = data.u8()) != 0x00) label += Convert.ToChar(character);
-            int size = data.u24be();
-            SaveStateLabels[label] = (int) data.Position;
-            data.Seek(size);
-        }
     }
 
     public void Dispose() {
@@ -191,7 +184,7 @@ public partial class GameBoy : IDisposable {
 
         if(Scene != null) {
             Scene.OnAudioReady(outsamples);
-            // returns a positive value if a video frame needs to be drawn.
+            // returns a positive value if the video frame hass been completed.
             if(videoFrameDoneSampleCount >= 0) {
                 Scene.Begin();
                 Scene.Render();
@@ -199,15 +192,15 @@ public partial class GameBoy : IDisposable {
             }
         }
 
-        return Libgambatte.gambatte_gethitinterruptaddress(Handle);
+        return runsamples;
     }
 
     // Emulates until the next video frame has to be drawn. Returns the hit address.
     public int AdvanceFrame(Joypad joypad = Joypad.None) {
         CurrentJoypad = joypad;
-        int hitaddress = RunFor(SamplesPerFrame - BufferSamples);
+        RunFor(SamplesPerFrame - BufferSamples);
         CurrentJoypad = Joypad.None;
-        return hitaddress;
+        return Libgambatte.gambatte_gethitinterruptaddress(Handle);
     }
 
     public void AdvanceFrames(int amount, Joypad joypad = Joypad.None) {
@@ -215,7 +208,7 @@ public partial class GameBoy : IDisposable {
     }
 
     // Emulates while holding the specified input until the program counter hits one of the specified breakpoints.
-    public unsafe int Hold(Joypad joypad, params int[] addrs) {
+    public unsafe virtual int Hold(Joypad joypad, params int[] addrs) {
         fixed(int* addrPtr = addrs) { // Note: Not fixing the pointer causes an AccessValidationException.
             Libgambatte.gambatte_setinterruptaddresses(Handle, addrPtr, addrs.Length);
             int hitaddress;
@@ -254,6 +247,12 @@ public partial class GameBoy : IDisposable {
         File.WriteAllBytes(file, SaveState());
     }
 
+    // Returns the emulator state as a struct.
+    public DetailedState SaveDetailedState() {
+        byte[] saveState = SaveState();
+        return new DetailedState(saveState);
+    }
+
     // Loads the emulator state given by a buffer.
     public void LoadState(byte[] buffer) {
         Libgambatte.gambatte_loadstate(Handle, buffer, buffer.Length);
@@ -262,6 +261,11 @@ public partial class GameBoy : IDisposable {
     // Helper function that reads the buffer directly from disk.
     public void LoadState(string file) {
         LoadState(File.ReadAllBytes(file));
+    }
+
+    // Loads the emulator state given by a struct.
+    public void LoadDetailedState(DetailedState state) {
+        LoadState(state.ToBuffer());
     }
 
     // Sets flags to control non-critical processes for CPU-concerned emulation.
@@ -284,6 +288,10 @@ public partial class GameBoy : IDisposable {
 
     public byte CpuRead(string addr) {
         return CpuRead(SYM[addr]);
+    }
+
+    public void SetRTCDivisorOffset(int rtcDivisorOffset) {
+        Libgambatte.gambatte_setrtcdivisoroffset(Handle, rtcDivisorOffset);
     }
 
     // Helper function that creates a basic scene graph with a video buffer component.
@@ -329,6 +337,30 @@ public partial class GameBoy : IDisposable {
         }
     }
 
+    public void PlayGambatteMovie(string filename) {
+        byte[] file = File.ReadAllBytes(filename);
+        ReadStream movie = new ReadStream(file);
+        Debug.Assert(movie.u8() == 0xfe, "The specified file was not a gambatte movie.");
+        Debug.Assert(movie.u8() == 0x01, "The specified gambatte movie was of an incorrect version.");
+
+        int stateSize = movie.u24be();
+        byte[] state = movie.Read(stateSize);
+
+        LoadState(state);
+
+        while(movie.Position < file.Length) {
+            long samples = movie.u32be();
+            byte input = movie.u8();
+
+            if(input == 0xff) {
+                HardReset();
+            } else {
+                CurrentJoypad = (Joypad) input;
+                while(samples > 0) samples -= RunFor((int) Math.Min(samples, SamplesPerFrame));
+            }
+        }
+    }
+
     public Bitmap Screenshot() {
         Bitmap bitmap;
         if(Scene == null) {
@@ -339,6 +371,21 @@ public partial class GameBoy : IDisposable {
             Renderer.ReadBuffer(bitmap.Pixels);
         }
         return bitmap;
+    }
+
+    // Reads the game's font from the ROM. Each game overrides this function and implements it in its own way.
+    public virtual Font ReadFont() {
+        return null;
+    }
+
+    // Injects an input by overwriting the hardware register.
+    public virtual void Inject(Joypad joypad) {
+        throw new NotImplementedException();
+    }
+
+    // Wrapper for advancing to joypad polling and injecting an input
+    public virtual void Press(params Joypad[] joypads) {
+        throw new NotImplementedException();
     }
 }
 
@@ -358,58 +405,137 @@ public static unsafe class Libgambatte {
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern void gambatte_destroy(IntPtr gb);
 
+    /**
+	  * Load ROM image.
+	  *
+	  * @param romfile  Path to rom image file. Typically a .gbc, .gb-file.
+	  * @param flags    ORed combination of LoadFlags.
+	  * @return 0 on success, negative value on failure.
+	  */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern int gambatte_load(IntPtr gb, string romfile, LoadFlags flags);
 
+    /**
+	  * Load bios image.
+	  *
+	  * @param biosfile  Path to bios image file. Typically a .bin-file.
+	  * @param size      File size requirement or 0.
+	  * @param crc       File crc32 requirement or 0.
+	  * @return 0 on success, negative value on failure.
+	  */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern int gambatte_loadbios(IntPtr gb, string biosfile, int size, int crc);
 
-    // Emulates until at least 'samples' audio samples are produced in the supplied audio buffer, or until a video frame has been drawn.
-    // There are 35112 audio (stereo) samples in a video frame.
-    // May run up to 2064 audio samples too long.
-    // The video buffer must have space for at least 160x144 ARGB32 (native endian) pixels.
+    /**
+	  * Emulates until at least 'samples' audio samples are produced in the
+	  * supplied audio buffer, or until a video frame has been drawn.
+	  *
+	  * There are 35112 audio (stereo) samples in a video frame.
+	  * May run for up to 2064 audio samples too long.
+	  *
+	  * An audio sample consists of two native endian 2s complement 16-bit PCM samples,
+	  * with the left sample preceding the right one.
+      *
+	  * Returns early when a new video frame has finished drawing in the video buffer,
+	  * such that the caller may update the video output before the frame is overwritten.
+	  * The return value indicates whether a new video frame has been drawn, and the
+	  * exact time (in number of samples) at which it was completed.
+	  *
+	  * @param videoBuf 160x144 RGB32 (native endian) video frame buffer or 0
+	  * @param pitch distance in number of pixels (not bytes) from the start of one line
+	  *              to the next in videoBuf.
+	  * @param audioBuf buffer with space >= samples + 2064
+	  * @param samples  in: number of stereo samples to produce,
+	  *                out: actual number of samples produced
+	  * @return sample offset in audioBuf at which the video frame was completed, or -1
+	  *         if no new video frame was completed.
+	  */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern int gambatte_runfor(IntPtr gb, byte[] videoBuf, int pitch, byte[] audioBuf, ref int samples);
 
+    /** adjust the assumed clock speed of the CPU compared to the RTC */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern void gambatte_setrtcdivisoroffset(IntPtr gb, int rtcDivisorOffset);
 
+    /**
+	  * Reset to initial state.
+	  * Equivalent to reloading a ROM image, or turning a Game Boy Color off and on again.
+	  */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern void gambatte_reset(IntPtr gb, int samplesToStall);
 
+    /** Sets the callback used for getting input state. */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern void gambatte_setinputgetter(IntPtr gb, InputGetter inputgetter);
 
+    /**
+	  * Saves emulator state to the buffer given by 'stateBuf'.
+	  *
+	  * @param  videoBuf 160x144 RGB32 (native endian) video frame buffer or 0. Used for
+	  *                  saving a thumbnail.
+	  * @param  pitch distance in number of pixels (not bytes) from the start of one line
+	  *               to the next in videoBuf.
+	  * @return size
+	  */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern int gambatte_savestate(IntPtr gb, byte[] videoBuf, int pitch, byte[] stateBuf);
 
+    /**
+	  * Loads emulator state from the buffer given by 'stateBuf' of size 'size'.
+	  * @return success
+	  */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern bool gambatte_loadstate(IntPtr gb, byte[] stateBuf, int size);
 
+    /**
+	  * Read a single byte from the CPU bus. This includes all RAM, ROM, MMIO, etc as
+	  * it is visible to the CPU (including mappers). While there is no cycle cost to
+	  * these reads, there may be other side effects! Use at your own risk.
+	  *
+	  * @param addr system bus address
+	  * @return byte read
+	  */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern byte gambatte_cpuread(IntPtr gb, ushort addr);
 
+    /**
+	  * Write a single byte to the CPU bus. While there is no cycle cost to these
+	  * writes, there can be quite a few side effects. Use at your own risk.
+	  *
+	  * @param addr system bus address
+	  * @param val  byte to write
+	  */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern void gambatte_cpuwrite(IntPtr gb, ushort addr, byte value);
 
+    /** Get reg and flag values. */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern void gambatte_getregs(IntPtr gb, out Registers regs);
 
+    /** Set reg and flag values. */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern void gambatte_setregs(IntPtr gb, Registers regs);
 
+    /**
+	  * Sets addresses the CPU will interrupt processing at before the instruction.
+	  * Format is 0xBBAAAA where AAAA is an address and BB is an optional ROM bank.
+	  */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern void gambatte_setinterruptaddresses(IntPtr gb, int* addrs, int numAddrs);
 
+    /** Gets the address the CPU was interrupted at or -1 if stopped normally. */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern int gambatte_gethitinterruptaddress(IntPtr gb);
 
+    /** Returns the current cycle-based time counter as dividers. (2^21/sec) */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int gambatte_timenow(IntPtr gb);
+    public static extern ulong gambatte_timenow(IntPtr gb);
 
+    /** Return a value in range 0-3FFF representing current "position" of internal divider */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern int gambatte_getdivstate(IntPtr gb);
 
+    /** Sets flags to control non-critical processes for CPU-concerned emulation. */
     [DllImport(dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern void gambatte_setspeedupflags(IntPtr gb, SpeedupFlags falgs);
 }

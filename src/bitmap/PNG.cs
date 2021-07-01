@@ -47,17 +47,17 @@ public unsafe static class PNG {
         public uint CheckValue;
     }
 
-    public static void Decode(ByteStream data, Bitmap dest) {
+    public static void Decode(ReadStream data, Bitmap dest) {
         PNGHeader header = data.Struct<PNGHeader>(true);
         Debug.Assert(header.Signature == PNGSignature, "Specified file was not a PNG file.");
 
-        ByteStream idatStream = new ByteStream();
+        ReadStream idatStream = new ReadStream();
 
         while(true) {
             PNGChunkHeader chunkHeader = data.Struct<PNGChunkHeader>(true);
             string chunkType = Encoding.ASCII.GetString(chunkHeader.Type, 4);
             byte[] chunkBytes = data.Read(chunkHeader.Length);
-            ByteStream chunkData = new ByteStream(chunkBytes);
+            ReadStream chunkData = new ReadStream(chunkBytes);
             PNGChunkFooter chunkFooter = data.Struct<PNGChunkFooter>(true);
 
             Debug.Assert(Crc32(chunkHeader.ToBytes().Concat(chunkBytes).ToArray(), 4) == chunkFooter.CRC, chunkType + " chunk's CRC mismatched!");
@@ -99,52 +99,52 @@ public unsafe static class PNG {
     }
 
     public static byte[] Encode(Bitmap bitmap) {
-        using(MemoryStream fileStream = new MemoryStream()) {
-            PNGHeader header = new PNGHeader {
-                Signature = PNGSignature,
-            };
+        WriteStream outStream = new WriteStream();
 
-            fileStream.Write(header.ToBytes(true));
-            WriteChunk(fileStream, "IHDR", new PNGIHDR {
-                Width = bitmap.Width,
-                Height = bitmap.Height,
-                BitDepth = 8,
-                ColorType = 6,
-                CompressionMethod = 0,
-                FilterMethod = 0,
-                InterlaceMethod = 0,
+        PNGHeader header = new PNGHeader {
+            Signature = PNGSignature,
+        };
+
+        outStream.Write(header, true);
+        WriteChunk(outStream, "IHDR", new PNGIHDR {
+            Width = bitmap.Width,
+            Height = bitmap.Height,
+            BitDepth = 8,
+            ColorType = 6,
+            CompressionMethod = 0,
+            FilterMethod = 0,
+            InterlaceMethod = 0,
+        }.ToBytes(true));
+
+        byte[] scanlines = new byte[bitmap.Width * bitmap.Height * 4 + bitmap.Height];
+        int scanlineSize = bitmap.Width * 4;
+        for(int scanline = 0; scanline < bitmap.Height; scanline++) {
+            int offset = scanline * scanlineSize;
+            Array.Copy(bitmap.Pixels, offset, scanlines, offset + scanline + 1, scanlineSize);
+        }
+
+        using(MemoryStream idatStream = new MemoryStream()) {
+            idatStream.Write(new PNGIDATHeader() {
+                ZLibMethodFlags = 0x78,
+                AdditionalFlags = 0x1,
             }.ToBytes(true));
 
-            byte[] scanlines = new byte[bitmap.Width * bitmap.Height * 4 + bitmap.Height];
-            int scanlineSize = bitmap.Width * 4;
-            for(int scanline = 0; scanline < bitmap.Height; scanline++) {
-                int offset = scanline * scanlineSize;
-                Array.Copy(bitmap.Pixels, offset, scanlines, offset + scanline + 1, scanlineSize);
-            }
+            using(DeflateStream compressionStream = new DeflateStream(idatStream, CompressionMode.Compress, true))
+                compressionStream.Write(scanlines);
 
-            using(MemoryStream idatStream = new MemoryStream()) {
-                idatStream.Write(new PNGIDATHeader() {
-                    ZLibMethodFlags = 0x78,
-                    AdditionalFlags = 0x1,
-                }.ToBytes(true));
+            idatStream.Write(new PNGIDATFooter() {
+                CheckValue = Alder32(scanlines),
+            }.ToBytes(true));
 
-                using(DeflateStream compressionStream = new DeflateStream(idatStream, CompressionMode.Compress, true))
-                    compressionStream.Write(scanlines);
-
-                idatStream.Write(new PNGIDATFooter() {
-                    CheckValue = Alder32(scanlines),
-                }.ToBytes(true));
-
-                WriteChunk(fileStream, "IDAT", idatStream.ToArray());
-            }
-
-            WriteChunk(fileStream, "IEND", new byte[0]);
-
-            return fileStream.ToArray();
+            WriteChunk(outStream, "IDAT", idatStream.ToArray());
         }
+
+        WriteChunk(outStream, "IEND", new byte[0]);
+
+        return outStream.ToArray();
     }
 
-    private static void WriteChunk(MemoryStream stream, string type, byte[] data) {
+    private static void WriteChunk(WriteStream stream, string type, byte[] data) {
         PNGChunkHeader header = new PNGChunkHeader {
             Length = data.Length,
         };
@@ -153,9 +153,9 @@ public unsafe static class PNG {
             CRC = Crc32(header.ToBytes().Concat(data).ToArray(), 4),
         };
 
-        stream.Write(header.ToBytes(true));
+        stream.Write(header, true);
         stream.Write(data);
-        stream.Write(footer.ToBytes(true));
+        stream.Write(footer, true);
     }
 
     private static uint Crc32(byte[] data, int index) {
@@ -164,7 +164,7 @@ public unsafe static class PNG {
             crc ^= data[i];
             for(int j = 0; j < 8; j++) {
                 uint t = ~((crc & 1) - 1);
-                crc = (crc >> 1) ^ (0xEDB88320 & t);
+                crc = (crc >> 1) ^ (0xedb88320 & t);
             }
         }
 

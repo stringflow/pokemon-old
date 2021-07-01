@@ -12,6 +12,32 @@ public enum MenuType {
     Fight,
     StartMenu,
     Mart,
+    ItemsPocket,
+    BallsPocket,
+    KeyItemsPocket,
+    TMHMPocket,
+    PC,
+}
+
+public class RbyTurn {
+
+    public string Move;
+    public string Pokemon;
+    public int Flags;
+
+    public RbyTurn(string move, int flags = 0) {
+        Move = move;
+        Flags = flags;
+
+        if((Flags & 0x3f) == 0) {
+            Flags |= 39;
+        }
+    }
+
+    public RbyTurn(string item, string pokemon) {
+        Move = item;
+        Pokemon = pokemon;
+    }
 }
 
 public class RbyForce : Rby {
@@ -22,13 +48,7 @@ public class RbyForce : Rby {
     public const int SideEffect = 0x100;
     public const int ThreeTurn = 0x200;
     public const int Hitself = 0x400;
-
-    // pathfinding constants
-    public const int WalkCost = 17;
-    public const int BikeCo = 9;
-    public const int LedgeHopCost = 40;
-    public const int WarpCost = 100;
-    public const int BonkCost = 8;
+    public const int AiItem = 0x800;
 
     // wOptions flags
     public const int Fast = 0x1;
@@ -41,28 +61,20 @@ public class RbyForce : Rby {
 
     public MenuType CurrentMenuType = MenuType.None;
 
+    private StateCacher StateCacher;
     private int NumSpriteSlots;
-    private bool CacheCleared;
-    private string CachedStatesDirectory;
 
-    public RbyForce(string rom, SpeedupFlags speedupFlags) : base(rom, speedupFlags) {
+    public RbyForce(string rom, SpeedupFlags speedupFlags) : base(rom, null, speedupFlags) {
         NumSpriteSlots = IsYellow ? 15 : 16;
-        CachedStatesDirectory = "rng-cache/" + GetType().Name;
-        if(!Directory.Exists(CachedStatesDirectory)) Directory.CreateDirectory(CachedStatesDirectory);
+        StateCacher = new StateCacher(GetType().Name);
     }
 
     public void CacheState(string name, System.Action fn) {
-        string state = CachedStatesDirectory + "/" + name + ".gqs";
-        if(!CacheCleared && File.Exists(state)) {
-            LoadState(state);
-        } else {
-            fn();
-            SaveState(state);
-        }
+        StateCacher.CacheState(this, name, fn);
     }
 
     public void ClearCache() {
-        CacheCleared = true;
+        StateCacher.ClearCache();
     }
 
     public void ForceGiftDVs(ushort dvs) {
@@ -110,7 +122,7 @@ public class RbyForce : Rby {
         if(useItem) {
             if(playerTurn.Pokemon != null) UseItem(playerTurn.Move, playerTurn.Pokemon);
             else UseItem(playerTurn.Move, playerTurn.Flags);
-        } else if(!BattleMon.ThrashingAbout) {
+        } else if(!BattleMon.ThrashingAbout && !BattleMon.Invulnerable) {
             if(CurrentMenuType != MenuType.Fight) BattleMenu(0, 0);
 
             int moveIndex = FindBattleMove(playerTurn.Move);
@@ -191,9 +203,9 @@ public class RbyForce : Rby {
             string address = SYM[addr];
             if(!address.StartsWith("VBlank")) {
                 if(address.StartsWith("MoveHitTest")) { // hit/miss
-                    A = (turn.Flags & Miss) != 0 ? 0xff : 0x00;
+                    A = (turn.Flags & Miss) > 0 ? 0xff : 0x00;
                 } else if(address.StartsWith("CriticalHitTest")) { // crit
-                    A = (turn.Flags & Crit) != 0 ? 0x00 : 0xff;
+                    A = (turn.Flags & Crit) > 0 ? 0x00 : 0xff;
                 } else if(address.StartsWith("RandomizeDamage")) { // damage roll
                     int roll = turn.Flags & 0x3f;
                     if(roll < 1) roll = 1;
@@ -201,11 +213,11 @@ public class RbyForce : Rby {
                     roll += 216;
                     A = (byte) ((roll << 1) | (roll >> 7)); // rotate left to counter a rrca instruction
                 } else if(address == "StatModifierDownEffect+0021") { // AI's 25% chance to miss
-                    A = (turn.Flags & Miss) != 0 ? 0x00 : 0xff;
+                    A = (turn.Flags & Miss) > 0 ? 0x00 : 0xff;
                 } else if(sideEffects.Any(effect => address.StartsWith(effect))) { // various side effects
-                    A = (turn.Flags & SideEffect) != 0 ? 0x00 : 0xff;
+                    A = (turn.Flags & SideEffect) > 0 ? 0x00 : 0xff;
                 } else if(address.StartsWith("TrainerAI")) {  // trainer ai
-                    A = 0xff; // trainer ai is ingored for now;
+                    A = (turn.Flags & AiItem) > 0 ? 0x00 : 0xff;
                 } else if(address.StartsWith("ThrashPetalDanceEffect")) {  // thresh/petal dance length
                     A = (turn.Flags & ThreeTurn) > 0 ? 0 : 1;
                 } else if(address.StartsWith("CheckPlayerStatusConditions.IsConfused") || address.StartsWith("CheckEnemyStatusConditions.IsConfused")) {  // confusion hit through
@@ -246,7 +258,7 @@ public class RbyForce : Rby {
     }
 
     public (Joypad Direction, int Amount) CalcMenuScroll(int target) {
-        RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
+        int ret = RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
         bool inStartMenu = CpuReadLE<ushort>(Registers.SP + 6) == (IsYellow ? SYM["RedisplayStartMenu_DoNotDrawStartMenu.loop"] : SYM["RedisplayStartMenu.loop"]) + 0x3;
         int current = CpuRead("wCurrentMenuItem");
         int max = CpuRead("wMaxMenuItem");
@@ -270,338 +282,6 @@ public class RbyForce : Rby {
         MenuPress(finalInput);
     }
 
-    // Temporary non-generic pathfinding code as the generic code had too many issues and became a hassle to maintain.
-    public List<Action> TempFindPath(RbyTile startTile, RbyTile endTile, Action preferredEndDirection = Action.None, params RbyTile[] additionallyBlockedTiles) {
-        byte[] overworldMap = ReadOverworldTiles();
-
-        Dictionary<RbyTile, int> costs = new Dictionary<RbyTile, int>();
-        Dictionary<RbyTile, RbyTile> previousTiles = new Dictionary<RbyTile, RbyTile>();
-        Dictionary<RbyTile, Action[]> previousActions = new Dictionary<RbyTile, Action[]>();
-        Queue<RbyTile> tileQueue = new Queue<RbyTile>();
-
-        byte walkBikeSurfState = CpuRead("wWalkBikeSurfState");
-        bool biking = walkBikeSurfState == 1;
-        bool surfing = walkBikeSurfState == 2;
-
-        costs[startTile] = 0;
-        tileQueue.Enqueue(startTile);
-
-        while(tileQueue.Count > 0) {
-            RbyTile currentTile = tileQueue.Dequeue();
-
-            for(int i = 0; i < 4; i++) {
-                Action action = (Action) (0x10 << i);
-                RbyTile neighborTile = GetNeighbor(currentTile, action);
-
-                bool ledgeHop = LedgeCheck(currentTile, neighborTile, action);
-                if(ledgeHop) neighborTile = GetNeighbor(neighborTile, action);
-
-                if(neighborTile == null || (additionallyBlockedTiles != null && Array.IndexOf(additionallyBlockedTiles, neighborTile) != -1)) continue;
-
-                RbyTileset tileset = neighborTile.Map.Tileset;
-                bool landCollision = !CollisionCheck(overworldMap, startTile, endTile, currentTile, neighborTile, tileset.LandPermissions, tileset.TilePairCollisionsLand);
-
-                if(!surfing) {
-                    if(landCollision) continue;
-                } else {
-                    bool waterCollision = !CollisionCheck(overworldMap, startTile, endTile, currentTile, neighborTile, tileset.WaterPermissions, tileset.TilePairCollisionsWater);
-                    if(waterCollision && !(!landCollision && neighborTile == endTile)) continue;
-                }
-
-                var warp = WarpCheck(neighborTile);
-                bool isWarp = warp.TileToWarpTo != null;
-                bool directionalWarp = warp.ActionRequired != Action.None;
-
-                AddNewState(isWarp ? warp.TileToWarpTo : neighborTile, isWarp, directionalWarp, ledgeHop, warp.ActionRequired);
-                if(directionalWarp || (isWarp && neighborTile == endTile)) AddNewState(neighborTile, false, false, false, Action.None);
-
-                void AddNewState(RbyTile newTile, bool isWarp, bool isDirectionalWarp, bool isLedgeHop, Action directionalWarpAction) {
-                    // Doors automatically move you 1 tile down
-                    if(isWarp && DoorCheck(newTile)) {
-                        newTile = GetNeighbor(newTile, Action.Down);
-                    }
-
-                    int cost = CalcStepCost(startTile, biking, isLedgeHop, isWarp, newTile, action);
-                    if(isDirectionalWarp && directionalWarpAction != action) cost += BonkCost;
-
-                    int newCost = costs[currentTile] + cost;
-                    if(costs.ContainsKey(endTile) && newCost > costs[endTile] + WarpCost) return;
-
-                    if(!costs.ContainsKey(newTile) || costs[newTile] > newCost) {
-                        costs[newTile] = newCost;
-                        previousTiles[newTile] = currentTile;
-                        previousActions[newTile] = isDirectionalWarp ? new Action[] { action, directionalWarpAction } : new Action[] { action };
-                        tileQueue.Enqueue(newTile);
-                    }
-                }
-            }
-        }
-
-        Action endAction = Action.None;
-
-        RbyTile newEndTile = null;
-        if(!costs.ContainsKey(endTile)) {
-            int minCost = int.MaxValue;
-            for(int i = 0; i < 4; i++) {
-                Action action = (Action) (0x10 << i);
-                if(preferredEndDirection != Action.None && action != preferredEndDirection.Opposite()) continue;
-
-                RbyTile t1 = GetNeighbor(endTile, action);
-                if(t1 != null && costs.ContainsKey(t1)) {
-                    int cost = costs[t1] + BonkCost;
-                    if(minCost > cost) {
-                        minCost = cost;
-                        newEndTile = t1;
-                        endAction = action.Opposite();
-                    }
-
-                    RbyTile t2 = GetNeighbor(t1, action);
-                    if(t2 != null && costs.ContainsKey(t2)) {
-                        cost = costs[t2] + CalcStepCost(startTile, biking, false, false, t2, action);
-                        if(minCost > cost) {
-                            minCost = cost;
-                            newEndTile = t2;
-                            endAction = action.Opposite();
-                        }
-                    }
-                }
-            }
-        } else if(preferredEndDirection != Action.None) {
-            endAction = preferredEndDirection;
-            newEndTile = GetNeighbor(endTile, preferredEndDirection.Opposite());
-        }
-
-        if(newEndTile != null) {
-            endTile = newEndTile;
-        }
-
-        List<Action> path = new List<Action>();
-        RbyTile tile = endTile;
-        while(tile != startTile) {
-            path.AddRange(previousActions[tile]);
-            tile = previousTiles[tile];
-        }
-
-        path.Reverse();
-        if(endAction != Action.None) path.Add(endAction);
-
-        return path;
-    }
-
-    public byte[] ReadOverworldTiles() {
-        RbyMap map = Map;
-        int width = map.Width;
-        int height = map.Height;
-
-        byte[] overworldMap = From("wOverworldMap").Read(1300);
-        byte[] blocks = new byte[width * height];
-
-        for(int i = 0; i < height; i++) {
-            Array.Copy(overworldMap, (i + 3) * (width + 6) + 3, blocks, i * width, width);
-        }
-
-        return map.Tileset.GetTiles(blocks, width);
-    }
-
-    public int CalcStepCost(RbyTile startTile, bool initialOnBike, bool ledgeHop, bool warp, RbyTile target, Action action) {
-        if(ledgeHop) return LedgeHopCost;
-        if(warp) return WarpCost;
-
-        bool cyclingRoad = target.Map.Id == 28 || (target.Map.Id == 27 && target.Y >= 10 && target.X >= 23);
-        bool onBike = startTile.Map.Id == target.Map.Id ? initialOnBike : target.Map.Tileset.AllowBike;
-
-        if(cyclingRoad) {
-            return action == Action.Down ? BikeCo : WalkCost;
-        } else {
-            return onBike ? BikeCo : WalkCost;
-        }
-    }
-
-    public RbyTile GetNeighbor(RbyTile tile, Action action) {
-        RbyMap map = tile.Map;
-        RbyConnection connection = null;
-        if(action == Action.Right && tile.X == map.Width * 2 - 1) connection = map.Connections[0];
-        if(action == Action.Left && tile.X == 0) connection = map.Connections[1];
-        if(action == Action.Down && tile.Y == map.Height * 2 - 1) connection = map.Connections[2];
-        if(action == Action.Up && tile.Y == 0) connection = map.Connections[3];
-
-        int xd;
-        int yd;
-        if(connection != null) {
-            if(action == Action.Down || action == Action.Up) {
-                xd = (tile.X + connection.XAlignment) & 0xff;
-                yd = connection.YAlignment;
-            } else {
-                xd = connection.XAlignment;
-                yd = (tile.Y + connection.YAlignment) & 0xff;
-            }
-
-            return map.Game.Maps[connection.MapId][xd, yd];
-        } else {
-            xd = tile.X;
-            yd = tile.Y;
-            switch(action) {
-                case Action.Right: xd++; break;
-                case Action.Left: xd--; break;
-                case Action.Down: yd++; break;
-                case Action.Up: yd--; break;
-            }
-            return tile.Map[xd, yd];
-        }
-    }
-
-    public bool DoorCheck(RbyTile target) {
-        return Array.IndexOf(target.Map.Tileset.DoorTiles, target.Collision) != -1;
-    }
-
-    public bool LedgeCheck(RbyTile src, RbyTile ledgeTile, Action action) {
-        return src != null && ledgeTile != null &&
-               src.Map.Game.Ledges.Any(ledge => ledge.Source == src.Collision && ledge.Ledge == ledgeTile.Collision && ledge.ActionRequired == action);
-    }
-
-    public bool CollisionCheck(byte[] overworldMap, RbyTile startTile, RbyTile endTile, RbyTile src, RbyTile dest, PermissionSet permissions, List<int> tilePairCollisions) {
-        if(dest == null) return false;
-        if(!IsTilePassable(overworldMap, startTile, src, dest, permissions, tilePairCollisions)) return false;
-        if(IsCollidingWithSprite(dest)) return false;
-        if(dest != endTile && IsMovingIntoTrainerVision(dest)) return false; // allow moving into trainer vision on the end tile
-        if(BlockSpinningTiles(dest)) return false;
-        return true;
-    }
-
-    public bool IsTilePassable(byte[] overworldMap, RbyTile startTile, RbyTile src, RbyTile dest, PermissionSet permissions, List<int> tilePairCollisions) {
-        byte destCollision;
-        if(startTile.Map.Id == dest.Map.Id) {
-            destCollision = overworldMap[(dest.X * 2) + (dest.Y * 2) * dest.Map.Width * 4 + dest.Map.Width * 4];
-        } else {
-            destCollision = dest.Collision;
-        }
-
-        if(!permissions.IsAllowed(destCollision)) return false;
-        if(tilePairCollisions.Contains(src.Collision << 8 | destCollision)) return false;
-
-        return true;
-    }
-
-    public bool IsCollidingWithSprite(RbyTile dest) {
-        if(dest.Map == Map) {
-            for(int spriteIndex = 1; spriteIndex < NumSpriteSlots; spriteIndex++) {
-                RbySprite sprite = dest.Map.Sprites[spriteIndex - 1];
-                if(!IsSpriteHidden(sprite)) {
-                    int spriteX = CpuRead(0xc205 | (spriteIndex << 4)) - 4;
-                    int spriteY = CpuRead(0xc204 | (spriteIndex << 4)) - 4;
-                    if(spriteX == dest.X && spriteY == dest.Y) return true;
-                }
-            }
-        } else {
-            foreach(RbySprite sprite in dest.Map.Sprites) {
-                if(!IsSpriteHidden(sprite) && sprite.X == dest.X && sprite.Y == dest.Y) return true;
-            }
-        }
-
-        return false;
-    }
-
-    public bool IsSpriteHidden(RbySprite sprite) {
-        if(sprite == null) return false;
-
-        return sprite.CanBeMissable && (CpuRead(sprite.MissableAddress) & (1 << sprite.MissableBit)) > 0;
-    }
-
-    public bool BlockSpinningTiles(RbyTile dest) {
-        // TODO: Handle them properly ecks dee
-        return dest.Map.Tileset.Id == 7 && (dest.Collision == 0x3c || dest.Collision == 0x3d || dest.Collision == 0x4c || dest.Collision == 0x4d);
-    }
-
-    public bool IsMovingIntoTrainerVision(RbyTile tile) {
-        foreach(RbyTrainer trainer in tile.Map.Trainers) {
-            if((CpuRead(trainer.EventFlagAddress) & (1 << trainer.EventFlagBit)) != 0) continue;
-
-            int range = trainer.SightRange;
-            if(trainer.Direction == Action.Down && tile.Y - trainer.Y == 4) range--;
-
-            RbyTile current = trainer.Map[trainer.X, trainer.Y];
-            for(int i = 0; i < range && current != null; i++) {
-                current = GetNeighbor(current, trainer.Direction);
-                if(current == tile) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    public (RbyTile TileToWarpTo, Action ActionRequired) WarpCheck(RbyTile warpTile) {
-        RbyWarp srcWarp = warpTile.Map.Warps[warpTile.X, warpTile.Y];
-        if(srcWarp != null) {
-            RbyMap destMap = Maps[srcWarp.DestinationMap];
-            if(destMap != null) {
-                RbyWarp destWarp = destMap.Warps[srcWarp.DestinationIndex];
-                if(destWarp != null) {
-                    RbyTile destTile = destMap[destWarp.X, destWarp.Y];
-                    if(Array.IndexOf(warpTile.Map.Tileset.WarpTiles, warpTile.Collision) != -1) return (destTile, Action.None);
-                    else {
-                        Action action = ExtraWarpCheck(warpTile);
-                        if(action != Action.None) {
-                            return (destTile, action);
-                        }
-                    }
-                }
-            }
-        }
-
-        return (null, Action.None);
-    }
-
-    public Action ExtraWarpCheck(RbyTile warpTile) {
-        byte map = warpTile.Map.Id;
-        byte tileset = warpTile.Map.Tileset.Id;
-
-        // https://github.com/pret/pokered/blob/master/home/overworld.asm#L719-L747
-        if(map == 0x61) return EdgeOfMapWarpCheck(warpTile);
-        else if(map == 0xc7) return DirectionalWarpCheck(warpTile);
-        else if(map == 0xc8) return DirectionalWarpCheck(warpTile);
-        else if(map == 0xca) return DirectionalWarpCheck(warpTile);
-        else if(map == 0x52) return DirectionalWarpCheck(warpTile);
-        else if(tileset == 0) return DirectionalWarpCheck(warpTile);
-        else if(tileset == 0xd) return DirectionalWarpCheck(warpTile);
-        else if(tileset == 0xe) return DirectionalWarpCheck(warpTile);
-        else if(tileset == 0x17) return DirectionalWarpCheck(warpTile);
-        else return EdgeOfMapWarpCheck(warpTile);
-    }
-
-    public Action EdgeOfMapWarpCheck(RbyTile warpTile) {
-        if(warpTile.X == 0) return Action.Left;
-        else if(warpTile.X == warpTile.Map.Width * 2 - 1) return Action.Right;
-        else if(warpTile.Y == 0) return Action.Up;
-        else if(warpTile.Y == warpTile.Map.Height * 2 - 1) return Action.Down;
-
-        return Action.None;
-    }
-
-    public Action DirectionalWarpCheck(RbyTile warpTile) {
-        for(int i = 0; i < 4; i++) {
-            Action action = (Action) (0x10 << i);
-            RbyTile neighbor = GetNeighbor(warpTile, action);
-            byte collision;
-            if(neighbor == null) {
-                int offs;
-                if(action == Action.Up) offs = 2 + warpTile.X % 2;
-                else if(action == Action.Down) offs = warpTile.X % 2;
-                else if(action == Action.Right) offs = (warpTile.Y % 2) * 2;
-                else offs = 1 + (warpTile.Y % 2) * 2;
-
-                RbyMap map = warpTile.Map;
-                collision = ROM[(warpTile.Map.Tileset.Bank << 16 | map.Tileset.BlockPointer) + map.BorderBlock * 16 + offs * 4 + 3];
-            } else {
-                collision = neighbor.Collision;
-            }
-            if(Array.IndexOf(DirectionalWarpTiles[action], collision) != -1) return action;
-        }
-
-        return Action.None;
-    }
-
     public int MoveTo(int map, int x, int y, Action preferredDirection = Action.None) {
         return MoveTo(Maps[map][x, y], preferredDirection);
     }
@@ -615,7 +295,7 @@ public class RbyForce : Rby {
     }
 
     public int MoveTo(RbyTile target, Action preferredDirection = Action.None, params RbyTile[] additionallyBlockedTiles) {
-        List<Action> path = TempFindPath(Tile, target, preferredDirection, additionallyBlockedTiles);
+        List<Action> path = Pathfinding.FindPath<RbyMap, RbyTile>(this, Tile, target, preferredDirection, additionallyBlockedTiles);
         return Execute(path.ToArray());
     }
 
@@ -695,7 +375,7 @@ public class RbyForce : Rby {
         Cut();
     }
 
-    public override int Execute(params Action[] actions) {
+    public override int Execute(Action[] actions, params (RbyTile Tile, System.Action Function)[] tileCallbacks) {
         CloseMenu();
 
         int ret = 0;
@@ -845,6 +525,10 @@ public class RbyForce : Rby {
     }
 
     public void OpenStartMenu() {
+        if(InBattle) {
+            return;
+        }
+
         if(CurrentMenuType != MenuType.None) {
             MenuPress(Joypad.B);
         } else if(CurrentMenuType != MenuType.StartMenu) {
@@ -961,7 +645,7 @@ public class RbyForce : Rby {
     public void UseItem(RbyItem item, int target1 = -1, int target2 = -1) {
         OpenBag();
 
-        ChooseListItem(Bag.IndexOf(item));
+        ChooseListItem(FindItem(item.Name));
 
         switch(item.ExecutionPointerLabel) {
             case "ItemUseEvoStone": // Can only be used outside of battle
@@ -1014,6 +698,10 @@ public class RbyForce : Rby {
             case "ItemUsePPRestore":
                 if(!InBattle) ChooseMenuItem(0); // USE
                 ChooseMenuItem(target1);
+                if(item.Name.Contains("ETHER")) {
+                    ClearText();
+                    ChooseMenuItem(target2);
+                }
                 RunUntil("ManualTextScroll");
                 Inject(Joypad.B);
                 if(!InBattle) {
@@ -1071,13 +759,6 @@ public class RbyForce : Rby {
     public void Cut() {
         UseOverworldMove("CUT");
         ClearText();
-        byte direction = CpuRead("wPlayerDirection");
-        switch(direction) {
-            case 0x1: Execute("R"); break;
-            case 0x2: Execute("L"); break;
-            case 0x4: Execute("D"); break;
-            case 0x8: Execute("U"); break;
-        }
     }
 
     public void Surf() {
@@ -1189,7 +870,8 @@ public class RbyForce : Rby {
 
     public void PushBoulder(Joypad joypad) {
         int encounterCheck = SYM["TryDoWildEncounter.CanEncounter"] + 3;
-        while(Hold(joypad, SYM["UpdateNPCSprite"] + 0x70, encounterCheck) == encounterCheck) {
+        int boulderPush = SYM["UpdateNPCSprite"] + (IsYellow ? 0x77 : 0x70);
+        while(Hold(joypad, boulderPush, encounterCheck) == encounterCheck) {
             A = 0xff;
             RunFor(1);
         }

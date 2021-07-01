@@ -12,6 +12,34 @@ public static class Extensions {
         return subarray;
     }
 
+    public static byte u8(this byte[] data, int offset) {
+        return data[offset];
+    }
+
+    public static ushort u16le(this byte[] data, int offset) {
+        return (ushort) (data[offset] | (data[offset + 1] << 8));
+    }
+
+    public static ushort u16be(this byte[] data, int offset) {
+        return (ushort) ((data[offset] << 8) | data[offset]);
+    }
+
+    public static int u24le(this byte[] data, int offset) {
+        return (ushort) (data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16));
+    }
+
+    public static int u24be(this byte[] data, int offset) {
+        return (ushort) ((data[offset] << 16) | (data[offset + 1] << 8) | data[offset + 2]);
+    }
+
+    public static uint u32le(this byte[] data, int offset) {
+        return (uint) (data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24));
+    }
+
+    public static uint u32be(this byte[] data, int offset) {
+        return (uint) ((data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | data[offset + 3]);
+    }
+
     public static T ReadStruct<T>(this byte[] array, int index, bool bigEndian = false) where T : unmanaged {
         if(bigEndian) EndianSwap(typeof(T), array);
         int structSize = Marshal.SizeOf<T>();

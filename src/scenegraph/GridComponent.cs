@@ -24,13 +24,16 @@ public class GridComponent : Component {
     public Bitmap Buffer;
     public ulong Texture;
 
-    public GridComponent(float x, float y, float width, float height, float renderLayer, string path) {
+    public GridComponent(float x, float y, float width, float height, float renderLayer, string path = null) {
         X = x;
         Y = y;
         Width = width;
         Height = height;
         RenderLayer = renderLayer;
+        if(path != null) ChangePath(path);
+    }
 
+    public void ChangePath(string path) {
         int minX = 0;
         int minY = 0;
         int maxX = 0;
@@ -61,8 +64,8 @@ public class GridComponent : Component {
         XOffset = -minX * 16;
         YOffset = -minY * 16;
 
-        Buffer = new Bitmap((int) width, (int) height);
-        Map = new Bitmap(Math.Max((int) width, (maxX - minX + 10) * 16), Math.Max((int) height, (maxY - minY + 9) * 16));
+        Buffer = new Bitmap((int) Width, (int) Height);
+        Map = new Bitmap(Math.Max((int) Width, (maxX - minX + 10) * 16), Math.Max((int) Height, (maxY - minY + 9) * 16));
 
         Array.Fill<byte>(Map.Pixels, 0x00);
         for(int i = 0; i < tiles.Count; i++) {
@@ -103,15 +106,15 @@ public class GridComponent : Component {
 
         Map.SubBitmap(Buffer, XOffset, YOffset, Buffer.Width, Buffer.Height);
 
-        byte[] state = gb.SaveState();
+        DetailedState state = gb.SaveDetailedState();
         for(int sprite = 0; sprite < 40; sprite++) {
-            byte y = (byte) (state[gb.SaveStateLabels["hram"] + sprite * 4 + 0] - 16);
-            byte x = (byte) (state[gb.SaveStateLabels["hram"] + sprite * 4 + 1] - 8);
-            byte tile = state[gb.SaveStateLabels["hram"] + sprite * 4 + 2];
-            byte flags = state[gb.SaveStateLabels["hram"] + sprite * 4 + 3];
+            byte y = (byte) (state.HRAM[sprite * 4 + 0] - 16);
+            byte x = (byte) (state.HRAM[sprite * 4 + 1] - 8);
+            byte tile = state.HRAM[sprite * 4 + 2];
+            byte flags = state.HRAM[sprite * 4 + 3];
 
             if(x >= 0 && x < 160 && y >= 0 && y < 144) {
-                byte[] spritePixels = state.Subarray(gb.SaveStateLabels["vram"] + tile * 16 + ((flags >> 3) & 0x1) * 0x2000, 16);
+                byte[] spritePixels = state.VRAM.Subarray(tile * 16 + ((flags >> 3) & 0x1) * 0x2000, 16);
                 for(int j = 0; j < 8; j++) {
                     int jj = (flags & 0x10) > 0 ? 7 - j : j;
                     byte top = spritePixels[j * 2 + 0];
@@ -130,17 +133,17 @@ public class GridComponent : Component {
             }
         }
 
-        if(windowShown) HideMenuTiles(state, gb.SaveStateLabels["vram"] + ((lcdc & 0x40) > 0 ? 0x1c00 : 0x1800), wx - 7, wy);
-        else HideMenuTiles(state, gb.SaveStateLabels["vram"] + ((lcdc & 0x8) > 0 ? 0x1c00 : 0x1800), 0, 0);
+        if(windowShown) HideMenuTiles(state, (lcdc & 0x40) > 0 ? 0x1c00 : 0x1800, wx - 7, wy);
+        else HideMenuTiles(state, (lcdc & 0x8) > 0 ? 0x1c00 : 0x1800, 0, 0);
 
         Renderer.SetTexturePixels(Texture, Buffer.Pixels, Buffer.Width, PixelFormat.RGBA);
     }
 
-    private void HideMenuTiles(byte[] state, int vramOffset, int xOffs, int yOffs) {
+    private void HideMenuTiles(DetailedState state, int vramOffset, int xOffs, int yOffs) {
         for(int x = 0; x < 20; x++) {
             for(int y = 0; y < 18; y++) {
                 int tile = x + y * 32;
-                byte tileIdx = state[vramOffset + tile];
+                byte tileIdx = state.VRAM[vramOffset + tile];
                 if(tileIdx >= 0x60) {
                     Buffer.FillRect(x * 8 + xOffs, y * 8 + yOffs, 8, 8, 0x00, 0x00, 0x00, 0x00);
                 }

@@ -12,9 +12,9 @@ public class RecordingComponent : Component {
     public RecordingComponent(string movie) {
         if(!Directory.Exists("movies")) Directory.CreateDirectory("movies");
         Movie = movie;
-        VideoStream = new FFMPEGStream("-y -f rawvideo -s " + Renderer.Window.Width + "x" + Renderer.Window.Height + " -pix_fmt rgb24 -r 60 -i - -crf 0 movies/video.mp4");
+        VideoStream = new FFMPEGStream("-y -f rawvideo -s " + Renderer.Window.Width + "x" + Renderer.Window.Height + " -pix_fmt rgba -r 60 -i - -crf 0 movies/video.mp4");
         AudioStream = new FFMPEGStream("-y -f s16le -ar 2097152 -ac 2 -i - -af volume=0.1 movies/audio.mp3");
-        OffscreenBuffer = new byte[Renderer.Window.Width * Renderer.Window.Height * 3];
+        OffscreenBuffer = new byte[Renderer.Window.Width * Renderer.Window.Height * 4];
     }
 
     public override void OnInit(GameBoy gb) {
