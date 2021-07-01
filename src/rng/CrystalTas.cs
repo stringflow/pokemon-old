@@ -1,9 +1,3 @@
-using System;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.IO;
-using System.Collections.Generic;
-
 public class CrystalTas : GscForce {
 
     public CrystalTas() : base("roms/pokecrystal.gbc") {
