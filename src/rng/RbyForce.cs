@@ -606,7 +606,7 @@ public class RbyForce : Rby {
         return index;
     }
 
-    public new void PartySwap(int mon1, int mon2) {
+    public void PartySwap(int mon1, int mon2) {
         OpenParty();
         ChooseMenuItem(mon1);
         ChooseMenuItem(1);
@@ -621,7 +621,7 @@ public class RbyForce : Rby {
         ItemSwap(FindItem(item1), FindItem(item2));
     }
 
-    public new void ItemSwap(int item1, int item2) {
+    public void ItemSwap(int item1, int item2) {
         OpenBag();
         SelectListItem(item1);
         SelectListItem(item2);

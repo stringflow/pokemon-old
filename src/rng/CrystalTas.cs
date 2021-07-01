@@ -1,9 +1,8 @@
 public class CrystalTas : GscForce {
 
     public CrystalTas() : base("roms/pokecrystal.gbc") {
-        //Show();
+        Show();
 
-        ClearCache();
         CacheState("intro", () => {
             GscStrat.GfSkip.Execute(this);
             GscStrat.TitleSkip.Execute(this);
