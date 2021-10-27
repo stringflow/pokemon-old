@@ -53,6 +53,7 @@ public class RbyForce : Rby {
     public const int SideEffect = 0x100;
     public const int Hitself = 0x200;
     public const int AiItem = 0x400;
+    public const int Switch = AiItem;
     public const int Turns = 0x800;
     public const int ThreeTurn = 3 * Turns;
 
@@ -128,9 +129,9 @@ public class RbyForce : Rby {
         if(useItem) {
             if(playerTurn.Pokemon != null) UseItem(playerTurn.Move, playerTurn.Pokemon, playerTurn.Target);
             else UseItem(playerTurn.Move, playerTurn.Flags);
-        } else if(playerTurn.Move=="SWITCH") {
+        } else if((playerTurn.Flags & Switch) != 0) {
             BattleMenu(1,0);
-            ChooseMenuItem(FindPokemon(playerTurn.Pokemon));
+            ChooseMenuItem(FindPokemon(playerTurn.Move));
             ChooseMenuItem(0);
         } else if(EnemyMon.UsingTrappingMove) {
             if(CpuRead("wTopMenuItemX") != 0x9 || CpuRead("wCurrentMenuItem") != 0)
@@ -259,6 +260,10 @@ public class RbyForce : Rby {
             }
         }
         RunFor(1);
+    }
+
+    public void BattleSwitch(string pokemon, RbyTurn enemyTurn) {
+        ForceTurn(new RbyTurn(pokemon, Switch), enemyTurn);
     }
 
     public void ForceCan() {
@@ -684,8 +689,7 @@ public class RbyForce : Rby {
         UseItem(Items[name], partyIndex, slotIndex);
     }
 
-    public void TossItem(string name, int quantity = 1)
-    {
+    public void TossItem(string name, int quantity = 1) {
         OpenBag();
         ChooseListItem(FindItem(name));
         ChooseMenuItem(1);
