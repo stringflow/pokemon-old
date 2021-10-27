@@ -24,19 +24,24 @@ public class RbyTurn {
     public string Move;
     public string Pokemon;
     public int Flags;
+    public string Target;
 
-    public RbyTurn(string move, int flags = 0) {
+    public static int DefaultRoll = 39;
+
+    public RbyTurn(string move, int flags = 0, string target = "") {
         Move = move;
         Flags = flags;
+        Target = target;
 
         if((Flags & 0x3f) == 0) {
-            Flags |= 39;
+            Flags |= DefaultRoll;
         }
     }
 
-    public RbyTurn(string item, string pokemon) {
+    public RbyTurn(string item, string pokemon, string target = "") {
         Move = item;
         Pokemon = pokemon;
+        Target = target;
     }
 }
 
@@ -46,9 +51,10 @@ public class RbyForce : Rby {
     public const int Miss = 0x40;
     public const int Crit = 0x80;
     public const int SideEffect = 0x100;
-    public const int ThreeTurn = 0x200;
-    public const int Hitself = 0x400;
-    public const int AiItem = 0x800;
+    public const int Hitself = 0x200;
+    public const int AiItem = 0x400;
+    public const int Turns = 0x800;
+    public const int ThreeTurn = 3 * Turns;
 
     // wOptions flags
     public const int Fast = 0x1;
@@ -120,8 +126,15 @@ public class RbyForce : Rby {
     public void ForceTurn(RbyTurn playerTurn, RbyTurn enemyTurn = null, bool speedTieWin = true) {
         bool useItem = Items[playerTurn.Move] != null;
         if(useItem) {
-            if(playerTurn.Pokemon != null) UseItem(playerTurn.Move, playerTurn.Pokemon);
+            if(playerTurn.Pokemon != null) UseItem(playerTurn.Move, playerTurn.Pokemon, playerTurn.Target);
             else UseItem(playerTurn.Move, playerTurn.Flags);
+        } else if(playerTurn.Move=="SWITCH") {
+            BattleMenu(1,0);
+            ChooseMenuItem(FindPokemon(playerTurn.Pokemon));
+            ChooseMenuItem(0);
+        } else if(EnemyMon.UsingTrappingMove) {
+            if(CpuRead("wTopMenuItemX") != 0x9 || CpuRead("wCurrentMenuItem") != 0)
+                MenuPress(Joypad.Left | Joypad.Up);
         } else if(!BattleMon.ThrashingAbout && !BattleMon.Invulnerable) {
             if(CurrentMenuType != MenuType.Fight) BattleMenu(0, 0);
 
@@ -134,11 +147,11 @@ public class RbyForce : Rby {
                 MenuPress(scroll.Direction);
             }
 
-            if(CpuRead("hJoyLast") == (byte) Joypad.A) Press(Joypad.None);
+            if((CpuRead("hJoyLast") & (byte)Joypad.A) != 0) Press(Joypad.None);
             Inject(Joypad.A);
         }
 
-        if(!EnemyMon.StoringEnergy) {
+        if(!(EnemyMon.StoringEnergy | EnemyMon.ChargingUp | EnemyMon.UsingRage | EnemyMon.Frozen | EnemyMon.UsingTrappingMove)) {
             Hold(Joypad.A, SYM["SelectEnemyMove.done"]);
             A = enemyTurn != null ? Moves[enemyTurn.Move].Id : 0;
         }
@@ -183,6 +196,7 @@ public class RbyForce : Rby {
         int enemyTurnDone1 = SYM["MainInBattleLoop.enemyMovesFirst"] + 0x11;
         int enemyTurnDone2 = SYM["MainInBattleLoop.playerMovesFirst"] + 0x27;
         int enemyTurnDone3 = SYM["HandleEnemyMonFainted"];
+        int enemyTurnDone4 = SYM["MainInBattleLoop.AIActionUsedPlayerFirst"];
 
         int ret;
         Joypad holdButton = Joypad.None;
@@ -196,11 +210,11 @@ public class RbyForce : Rby {
             "FlinchSideEffect"
         };
 
-        while((ret = ClearTextUntil(holdButton, random, playerTurnDone1, playerTurnDone2, playerTurnDone3, enemyTurnDone1, enemyTurnDone2, enemyTurnDone3)) == random) {
-            RunFor(1);
-            int addr = PC;
+        while((ret = ClearTextUntil(holdButton, random, playerTurnDone1, playerTurnDone2, playerTurnDone3, enemyTurnDone1, enemyTurnDone2, enemyTurnDone3, enemyTurnDone4)) == random) {
+            int addr = CpuReadLE<ushort>(SP);
             if(addr > 0x4000) addr |= CpuRead("hLoadedROMBank") << 16;
             string address = SYM[addr];
+            RunUntil(addr);
             if(!address.StartsWith("VBlank")) {
                 if(address.StartsWith("MoveHitTest")) { // hit/miss
                     A = (turn.Flags & Miss) > 0 ? 0xff : 0x00;
@@ -226,6 +240,19 @@ public class RbyForce : Rby {
                     A = 0;
                 } else if(address.StartsWith("ApplyAttackToPlayerPokemon.loop")) { // psywave damage
                     A = turn.Flags & 0x3f;
+                } else if(address.StartsWith("DisableEffect.pickMoveToDisable")) { // disable move
+                    A = FindBattleMove(turn.Target) & 0x3;
+                } else if(address.StartsWith("DisableEffect.playerTurnNotLinkBattle")) { // disable number of turns (1-8)
+                    int turns=turn.Flags/Turns;
+                    A = ((turns >= 1 ? turns : 8) - 1) & 0x7;
+                } else if(address.StartsWith("BideEffect.bideEffect")) { // bide number of turns (2-3)
+                    int turns=turn.Flags/Turns;
+                    A = ((turns >= 2 ? turns : 3) - 2) & 0x7;
+                } else if(address.StartsWith("TrappingEffect.trappingEffect+000b") || address.StartsWith("TwoToFiveAttacksEffect.setNumberOfHits+000e")) { // not needed
+                    A = 0x3;
+                } else if(address.StartsWith("TrappingEffect.trappingEffect+0014") || address.StartsWith("TwoToFiveAttacksEffect.setNumberOfHits+0017")) { // multi-attack number of hits (2-5)
+                    int turns=turn.Flags/Turns;
+                    A = ((turns >= 2 ? turns : 5) - 2) & 0x3;
                 } else {
                     Console.WriteLine("Unhandled Random call coming from " + address);
                 }
@@ -402,10 +429,13 @@ public class RbyForce : Rby {
 
                         Inject(joypad);
                         bool turnframe = CpuRead("wCheckFor180DegreeTurn") == 1;
-                        while((ret = Hold(turnframe ? joypad : Joypad.None, SYM["OverworldLoopLessDelay.newBattle"] + 3, SYM["CollisionCheckOnLand.collision"], SYM["CollisionCheckOnWater.collision"], SYM["TryWalking"])) == SYM["TryWalking"]) {
+                        while((ret = Hold(turnframe ? joypad : Joypad.None, SYM["OverworldLoopLessDelay.newBattle"] + 3, SYM["CollisionCheckOnLand.collision"], SYM["CollisionCheckOnWater.collision"], SYM["DisplayRepelWoreOffText"], SYM["TryWalking"])) == SYM["TryWalking"]) {
                             D = 0x00;
                             E = 0x00;
                             RunFor(1);
+                        }
+                        if(ret==SYM["DisplayRepelWoreOffText"]) {
+                            ClearText();
                         }
 
                         if(turnframe && (ret == SYM["CollisionCheckOnLand.collision"] || ret == SYM["CollisionCheckOnWater.collision"])) {
@@ -429,6 +459,9 @@ public class RbyForce : Rby {
                             directionalWarp = false;
                         }
                     } while((CpuRead("wd730") & 0xa0) > 0);
+                    break;
+                default:
+                    base.Execute(new[]{action}, tileCallbacks);
                     break;
             }
             previous = action;
@@ -525,7 +558,7 @@ public class RbyForce : Rby {
     }
 
     public void OpenStartMenu() {
-        if(InBattle) {
+        if(InBattle || CurrentMenuType == MenuType.StartMenu) {
             return;
         }
 
@@ -537,13 +570,13 @@ public class RbyForce : Rby {
         }
     }
 
-    public void CloseMenu() {
+    public void CloseMenu(Joypad direction = Joypad.None) {
         if(CurrentMenuType != MenuType.None) {
             if(CurrentMenuType == MenuType.Mart) {
                 MenuPress(Joypad.B);
                 ClearText();
             } else {
-                if(CurrentMenuType != MenuType.StartMenu) MenuPress(Joypad.B);
+                if(CurrentMenuType != MenuType.StartMenu) MenuPress(Joypad.B | direction);
                 MenuPress(Joypad.Start);
             }
         }
@@ -574,6 +607,15 @@ public class RbyForce : Rby {
         else ChooseMenuItem(1 + StartMenuOffset());
 
         CurrentMenuType = MenuType.Bag;
+    }
+
+    public void Save() {
+        OpenStartMenu();
+        ChooseMenuItem(3 + StartMenuOffset());
+        ClearText();
+        Yes();
+
+        CurrentMenuType = MenuType.None;
     }
 
     private void OpenOptions() {
@@ -642,6 +684,25 @@ public class RbyForce : Rby {
         UseItem(Items[name], partyIndex, slotIndex);
     }
 
+    public void TossItem(string name, int quantity = 1)
+    {
+        OpenBag();
+        ChooseListItem(FindItem(name));
+        ChooseMenuItem(1);
+        while(quantity < 1) { // 0 to toss all, -1 to toss all minus one, etc.
+            MenuPress(Joypad.Down);
+            quantity++;
+        }
+        while(quantity > 1) {
+            MenuPress(Joypad.Up);
+            quantity--;
+        }
+        MenuPress(Joypad.A);
+        ClearText();
+        Yes();
+        ClearText();
+    }
+
     public void UseItem(RbyItem item, int target1 = -1, int target2 = -1) {
         OpenBag();
 
@@ -700,7 +761,7 @@ public class RbyForce : Rby {
                 ChooseMenuItem(target1);
                 if(item.Name.Contains("ETHER")) {
                     ClearText();
-                    ChooseMenuItem(target2);
+                    ChooseMenuItem(target2 + 1);
                 }
                 RunUntil("ManualTextScroll");
                 Inject(Joypad.B);
@@ -709,7 +770,28 @@ public class RbyForce : Rby {
                     RunUntil("Joypad");
                 }
                 break;
+            case "ItemUsePPUp":
+                ChooseMenuItem(0); // USE
+                ChooseMenuItem(target1);
+                ClearText();
+                ChooseMenuItem(target2 + 1);
+                ClearText();
+                break;
+            case "ItemUseSuperRepel":
+            case "ItemUseRepel":
+                if(!InBattle) ChooseMenuItem(0); // USE
+                ClearText();
+                break;
+            case "ItemUseMedicine":
+                if(!InBattle) ChooseMenuItem(0); // USE
+                ChooseMenuItem(target1);
+                RunUntil("DoneText");
+                Press(Joypad.B);
+                break;
             case "ItemUseXAccuracy":
+                RunUntil("DoneText");
+                Inject(Joypad.B);
+                break;
             case "ItemUseXStat": // Can only be used in battle
                 RunUntil("DoneText");
                 Inject(Joypad.B);
@@ -868,11 +950,15 @@ public class RbyForce : Rby {
         ClearText();
     }
 
-    public void PushBoulder(Joypad joypad) {
-        int encounterCheck = SYM["TryDoWildEncounter.CanEncounter"] + 3;
-        int boulderPush = SYM["UpdateNPCSprite"] + (IsYellow ? 0x77 : 0x70);
-        while(Hold(joypad, boulderPush, encounterCheck) == encounterCheck) {
-            A = 0xff;
+    public void PushBoulder(Joypad joypad, int pushes = 1) {
+        for(int i = 0; i < pushes; ++i) {
+            int encounterCheck = SYM["TryDoWildEncounter.CanEncounter"] + 3;
+            int boulderPush = SYM["UpdateNPCSprite"] + (IsYellow ? 0x77 : 0x70);
+            Inject(joypad);
+            while(Hold(joypad, boulderPush, encounterCheck) == encounterCheck) {
+                A = 0xff;
+                RunFor(1);
+            }
             RunFor(1);
         }
     }
