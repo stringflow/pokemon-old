@@ -896,7 +896,7 @@ public class BlueNidoTas : RedBlueForce {
             MoveTo(5, 35, Action.Up);
             ClearText();
 
-            MoveTo("VictoryRoad1F", 8, 16);
+            MoveTo("VictoryRoad1F", 8, 17);
             Strength();
             MoveTo(5, 14);
             PushBoulder(Joypad.Down);
@@ -912,7 +912,7 @@ public class BlueNidoTas : RedBlueForce {
             PushBoulder(Joypad.Right);
             Execute("U R R");
             PushBoulder(Joypad.Down);
-            MoveTo("VictoryRoad2F", 0, 9);
+            MoveTo("VictoryRoad2F", 0, 8);
 
             Strength();
             MoveTo(5, 14);
@@ -922,7 +922,7 @@ public class BlueNidoTas : RedBlueForce {
             Execute("R D D");
             PushBoulder(Joypad.Left, 2);
 
-            MoveTo("VictoryRoad3F", 23, 6);
+            MoveTo("VictoryRoad3F", 23, 7);
             Strength();
             MoveTo(22, 4);
             PushBoulder(Joypad.Up, 2);
@@ -938,7 +938,7 @@ public class BlueNidoTas : RedBlueForce {
             PushBoulder(Joypad.Right);
             Execute("U");
 
-            MoveTo(21, 15);
+            MoveTo(21, 15, Action.Right);
             PushBoulder(Joypad.Right);
             Execute("R R");
             FallDown();
