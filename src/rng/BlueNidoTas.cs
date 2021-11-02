@@ -896,53 +896,49 @@ public class BlueNidoTas : RedBlueForce {
             MoveTo(5, 35, Action.Up);
             ClearText();
 
-            MoveTo("VictoryRoad1F", 8, 16);
+            MoveTo("VictoryRoad1F", 8, 17);
             Strength();
             MoveTo(5, 14);
             PushBoulder(Joypad.Down);
             Execute("D L D");
-            for(int i = 0; i < 4; i++) {
-                PushBoulder(Joypad.Right); Execute("R");
-            }
-            Execute("D R");
-            for(int i = 0; i < 2; i++) { PushBoulder(Joypad.Up); Execute("U"); }
-            Execute("L U");
-            for(int i = 0; i < 7; i++) { PushBoulder(Joypad.Right); Execute("R"); }
-            Execute("D R");
-            PushBoulder(Joypad.Up); Execute("U");
-            PushBoulder(Joypad.Up);
+            PushBoulder(Joypad.Right, 4);
+            Execute("R D R");
+            PushBoulder(Joypad.Up, 2);
+            Execute("U L U");
+            PushBoulder(Joypad.Right, 7);
+            Execute("R D R");
+            PushBoulder(Joypad.Up, 2);
             Execute("L L U U R");
             PushBoulder(Joypad.Right);
             Execute("U R R");
             PushBoulder(Joypad.Down);
-            MoveTo("VictoryRoad2F", 0, 9);
+            MoveTo("VictoryRoad2F", 0, 8);
 
             Strength();
             MoveTo(5, 14);
             PushBoulder(Joypad.Left);
             Execute("U L L");
-            PushBoulder(Joypad.Down); Execute("D");
-            PushBoulder(Joypad.Down);
+            PushBoulder(Joypad.Down, 2);
             Execute("R D D");
-            PushBoulder(Joypad.Left); Execute("L");
-            PushBoulder(Joypad.Left);
+            PushBoulder(Joypad.Left, 2);
 
-            MoveTo("VictoryRoad3F", 23, 6);
+            MoveTo("VictoryRoad3F", 23, 7);
             Strength();
             MoveTo(22, 4);
-            for(int i = 0; i < 2; i++) { PushBoulder(Joypad.Up); Execute("U"); }
-            Execute("R U");
-            for(int i = 0; i < 16; i++) { PushBoulder(Joypad.Left); Execute("L"); }
-            Execute("U L");
+            PushBoulder(Joypad.Up, 2);
+            Execute("U R U");
+            PushBoulder(Joypad.Left, 16);
+            Execute("L U L");
             PushBoulder(Joypad.Down);
             Execute("R D D");
-            for(int i = 0; i < 4; i++) { PushBoulder(Joypad.Left); Execute("L"); }
-            Execute("U L");
-            for(int i = 0; i < 3; i++) { PushBoulder(Joypad.Down); Execute("D"); }
-            Execute("L D");
-            PushBoulder(Joypad.Right); Execute("U");
+            PushBoulder(Joypad.Left, 4);
+            Execute("L U L");
+            PushBoulder(Joypad.Down, 3);
+            Execute("D L D");
+            PushBoulder(Joypad.Right);
+            Execute("U");
 
-            MoveTo(21, 15);
+            MoveTo(21, 15, Action.Right);
             PushBoulder(Joypad.Right);
             Execute("R R");
             FallDown();
@@ -951,7 +947,7 @@ public class BlueNidoTas : RedBlueForce {
             UseItem("ELIXER", "NIDOKING");
             UseItem("BICYCLE");
             Execute("D R R U");
-            for(int i = 0; i < 14; i++) { PushBoulder(Joypad.Left); Execute("L"); }
+            PushBoulder(Joypad.Left, 14);
 
             TalkTo("IndigoPlateauLobby", 15, 8, Action.Up);
 

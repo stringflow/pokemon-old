@@ -170,9 +170,20 @@ public partial class Rby {
     public void BattleMenu(int x, int y) {
         if(CpuRead("wIsInBattle") > 0) {
             byte xMenu = CpuRead("wTopMenuItemX");
-            if(x == 0 && xMenu != 0x9) MenuPress(Joypad.Left);
-            else if(x == 1 && xMenu != 0xff) MenuPress(Joypad.Right);
-            ChooseMenuItem(y);
+            byte yMenu = CpuRead("wCurrentMenuItem");
+            Joypad j=Joypad.None;
+
+            if(x == 0 && xMenu != 0x9) j |= Joypad.Left;
+            else if(x == 1 && xMenu != 0xf) j |= Joypad.Right;
+            if(y == 0 && yMenu != 0) j |= Joypad.Up;
+            else if(y == 1 && yMenu != 1) j |= Joypad.Down;
+
+            if(!IsYellow && (j & (Joypad.Left | Joypad.Right)) == 0 || j==Joypad.None)
+                MenuPress(j | Joypad.A); // in red/blue, we can down+A or up+A
+            else {
+                MenuPress(j);
+                MenuPress(Joypad.A);
+            }
         }
     }
 
