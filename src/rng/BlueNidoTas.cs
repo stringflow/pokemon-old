@@ -545,7 +545,7 @@ public class BlueNidoTas : RedBlueForce {
             Buy("X SPEED", 3);
 
             TalkTo("CeladonMartElevator", 3, 0);
-            ChooseMenuItem(0);
+            ChooseListItem(0);
 
             MoveTo("CeladonCity", 8, 14);
             UseItem("BICYCLE");
@@ -950,18 +950,7 @@ public class BlueNidoTas : RedBlueForce {
             PushBoulder(Joypad.Left, 14);
 
             TalkTo("IndigoPlateauLobby", 15, 8, Action.Up);
-
-            // TODO: PC functions
-            ChooseMenuItem(0);
-            ClearText();
-            for(int i = 0; i < 3; i++) {
-                ChooseMenuItem(1);
-                ChooseMenuItem(1);
-                ChooseMenuItem(0);
-                ClearText();
-            }
-            MenuPress(Joypad.B);
-            MenuPress(Joypad.B);
+            Deposit("SQUIRTLE", "PIDGEY", "SANDSHREW");
         });
 
         CacheState("lorelei", () => {

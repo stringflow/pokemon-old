@@ -313,18 +313,7 @@ public class SCTTas : RedBlueForce {
             PushBoulder(Joypad.Left, 14);
 
             TalkTo("IndigoPlateauLobby", 15, 8, Action.Up);
-
-            // TODO: PC functions
-            ChooseMenuItem(0);
-            ClearText();
-            for(int i = 0; i < 4; i++) {
-                ChooseMenuItem(1);
-                ChooseMenuItem(1);
-                ChooseMenuItem(0);
-                ClearText();
-            }
-            MenuPress(Joypad.B);
-            MenuPress(Joypad.B);
+            Deposit("PIDGEY", "SQUIRTLE", "PARAS", "CLEFABLE");
         });
 
         CacheState("lorelei", () => {

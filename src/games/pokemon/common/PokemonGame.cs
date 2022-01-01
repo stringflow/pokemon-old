@@ -64,7 +64,7 @@ public partial class PokemonGame : GameBoy {
         int amount = Math.Abs(current - target);
 
         // If the menu wraps around, the number of inputs should never exceed half of the menus size.
-        if(wrapping && amount > max / 2) {
+        if(wrapping && amount > (max + 1) / 2) {
             // If it does exceed, going the other way is fewer inputs.
             amount = max - amount + 1;
             scrollInput ^= (Joypad) 0xc0; // Switch to the other button. This is achieved by XORing the value by 0xc0.
