@@ -60,11 +60,11 @@ public static class ActionFunctions {
     }
 
     public static Action FromSpriteDirection(byte dir) {
-        switch(dir) {
-            case 0x0: return Action.Down;
-            case 0x4: return Action.Up;
-            case 0x8: return Action.Left;
-            case 0xc: return Action.Right;
+        switch((RbySpriteMovement) dir) {
+            case RbySpriteMovement.FacingDown: return Action.Down;
+            case RbySpriteMovement.FacingUp: return Action.Up;
+            case RbySpriteMovement.FacingLeft: return Action.Left;
+            case RbySpriteMovement.FacingRight: return Action.Right;
             default: return Action.None;
         }
     }

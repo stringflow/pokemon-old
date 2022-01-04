@@ -1,4 +1,22 @@
 public enum RbySpriteMovement : byte {
+    MovingRight = 0x1,
+    MovingLeft = 0x2,
+    MovingDown = 0x4,
+    MovingUp = 0x8,
+
+    FacingDown = 0x0,
+    FacingUp = 0x4,
+    FacingLeft = 0x8,
+    FacingRight = 0xc,
+
+    AnyDir = 0x00,
+    UpDown = 0x01,
+    LeftRight = 0x02,
+    Down = 0xd0,
+    Up = 0xd1,
+    Left = 0xd2,
+    Right = 0xd3,
+    None = 0xff,
 
     Turn = 0xfd,
     Walk = 0xfe,
@@ -57,12 +75,12 @@ public class RbySprite {
         if(Movement == RbySpriteMovement.Walk) {
             Range = rangeOrDirection;
         } else {
-            switch(rangeOrDirection) {
-                case 0xd0: Direction = Action.Down; break;
-                case 0xd1: Direction = Action.Up; break;
-                case 0xd2: Direction = Action.Left; break;
-                case 0xd3: Direction = Action.Right; break;
-                case 0xff:
+            switch((RbySpriteMovement) rangeOrDirection) {
+                case RbySpriteMovement.Down: Direction = Action.Down; break;
+                case RbySpriteMovement.Up: Direction = Action.Up; break;
+                case RbySpriteMovement.Left: Direction = Action.Left; break;
+                case RbySpriteMovement.Right: Direction = Action.Right; break;
+                case RbySpriteMovement.None:
                     Movement = RbySpriteMovement.Turn;
                     goto default;
                 default:

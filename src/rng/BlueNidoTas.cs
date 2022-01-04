@@ -1,9 +1,7 @@
 public class BlueNidoTas : RedBlueForce {
 
     // TODO:
-    //  - TAS menu execution
     //  - TAS instant text execution (this is challenging)
-    //  - Better NPC support (being able to specify how they should move)
     //  - Better pathfinding
     //    > Make pathfinding consider turn frames (last moon room/post underground elixer house)
 
@@ -111,12 +109,13 @@ public class BlueNidoTas : RedBlueForce {
                 For defining turns:
                     Parameter #1: name of the move *OR* name of the item that will be used
                     Parameter #2: Bitfield flags [Lower 6 bits will be the damage roll (one based, 1-39) *OR* Psywave damage,
-                                                  for the rest see https://github.com/stringflow/pokemon/blob/main/src/rng/RedBlueForce.cs#L20-L24]
+                                                  for the rest see https://github.com/stringflow/pokemon/blob/main/src/rng/RbyForce.cs#L56-L64]
+                                  May also specify a target pokemon on which to use the given item (for (Max)Ether only, Parameter #3 is the move to refill),
+                                  or a target move in the specific case of Metronome and Disable (flags will then be in Parameter #3).
 
                 Notes:
-                    - Thrash/Petal Dance will be 4 turns by default.
+                    - Moves such as Thrash, Wrap or Fury Attack will default to the maximum number of turns if the Turns flag isn't used.
                     - If the opponent will not get a turn, but may use a priority move, the opponent's turn may still be omitted and a non-priority move will be forced.
-                    - Trainer AI is ignored for now.
             */
             ForceTurn(new RbyTurn("TAIL WHIP"), new RbyTurn("GROWL", Miss));
             ForceTurn(new RbyTurn("TACKLE"), new RbyTurn("GROWL", Miss));
@@ -194,6 +193,10 @@ public class BlueNidoTas : RedBlueForce {
             ForceTurn(new RbyTurn("BUBBLE"));
             ForceTurn(new RbyTurn("BUBBLE", Crit | 38), new RbyTurn("SCREECH", Miss));
             ForceTurn(new RbyTurn("BUBBLE"), new RbyTurn("TACKLE", Crit | 38));
+            /*
+                Sends a pokemon after the current one died.
+                To share XP, we would use BattleSwitch instead.
+            */
             SendOut("NIDORANM");
             ForceTurn(new RbyTurn("TACKLE"), new RbyTurn("TACKLE", 38));
         });
@@ -691,6 +694,11 @@ public class BlueNidoTas : RedBlueForce {
         });
 
         CacheState("mansion", () => {
+            /*
+                Forces the NPC at the given coordinates to move in the specified direction.
+                Unless this function is called, NPCs will be forced to stand still.
+            */
+            MoveNpc("PalletTown", 3, 8, Action.Right);
             Fly("PalletTown");
             MoveTo(4, 13, Action.Down);
             ItemSwap("NUGGET", "X SPEED");
@@ -950,6 +958,10 @@ public class BlueNidoTas : RedBlueForce {
             PushBoulder(Joypad.Left, 14);
 
             TalkTo("IndigoPlateauLobby", 15, 8, Action.Up);
+            /*
+                Deposit the specified pokemons. Withdraw is used the same way.
+                For DepositItems and WithdrawItems, the quantity will need to be specified (on the same model as Sell and Buy).
+            */
             Deposit("SQUIRTLE", "PIDGEY", "SANDSHREW");
         });
 

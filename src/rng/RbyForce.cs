@@ -76,6 +76,7 @@ public class RbyForce : Rby {
 
     private StateCacher StateCacher;
     private int NumSpriteSlots;
+    private Dictionary<RbySprite, Action> NpcMovements = new Dictionary<RbySprite, Action>();
 
     public RbyForce(string rom, SpeedupFlags speedupFlags) : base(rom, null, speedupFlags) {
         NumSpriteSlots = IsYellow ? 15 : 16;
@@ -136,7 +137,7 @@ public class RbyForce : Rby {
             if(playerTurn.Target != null) UseItem(playerTurn.Move, playerTurn.Target, playerTurn.Target2);
             else UseItem(playerTurn.Move, playerTurn.Flags);
         } else if((playerTurn.Flags & Switch) != 0) {
-            BattleMenu(1,0);
+            BattleMenu(1, 0);
             ChooseMenuItem(FindPokemon(playerTurn.Move));
             ChooseMenuItem(0);
         } else if(EnemyMon.UsingTrappingMove) {
@@ -153,7 +154,7 @@ public class RbyForce : Rby {
             for(int i = 0; i < scroll.Amount; i++) {
                 MenuPress(scroll.Input);
             }
-            if((CpuRead("hJoyLast") & (byte)Joypad.A) != 0) Press(Joypad.None);
+            if((CpuRead("hJoyLast") & (byte) Joypad.A) != 0) Press(Joypad.None);
             Inject(Joypad.A);
         }
 
@@ -319,18 +320,6 @@ public class RbyForce : Rby {
         return Execute(path.ToArray());
     }
 
-    public void TalkTo(int map, int x, int y) {
-        TalkTo(Maps[map][x, y], Action.None);
-    }
-
-    public void TalkTo(string map, int x, int y) {
-        TalkTo(Maps[map][x, y], Action.None);
-    }
-
-    public void TalkTo(int targetX, int targetY) {
-        TalkTo(Map[targetX, targetY], Action.None);
-    }
-
     public void TalkTo(int map, int x, int y, Joypad holdButton = Joypad.None) {
         TalkTo(Maps[map][x, y], Action.None, holdButton);
     }
@@ -343,16 +332,16 @@ public class RbyForce : Rby {
         TalkTo(Map[targetX, targetY], Action.None, holdButton);
     }
 
-    public void TalkTo(int map, int x, int y, Action preferredDirection = Action.None, Joypad holdButton = Joypad.None) {
-        TalkTo(Maps[map][x, y], preferredDirection);
+    public void TalkTo(int map, int x, int y, Action preferredDirection, Joypad holdButton = Joypad.None) {
+        TalkTo(Maps[map][x, y], preferredDirection, holdButton);
     }
 
-    public void TalkTo(string map, int x, int y, Action preferredDirection = Action.None, Joypad holdButton = Joypad.None) {
-        TalkTo(Maps[map][x, y], preferredDirection);
+    public void TalkTo(string map, int x, int y, Action preferredDirection, Joypad holdButton = Joypad.None) {
+        TalkTo(Maps[map][x, y], preferredDirection, holdButton);
     }
 
-    public void TalkTo(int targetX, int targetY, Action preferredDirection = Action.None, Joypad holdButton = Joypad.None) {
-        TalkTo(Map[targetX, targetY], preferredDirection);
+    public void TalkTo(int targetX, int targetY, Action preferredDirection, Joypad holdButton = Joypad.None) {
+        TalkTo(Map[targetX, targetY], preferredDirection, holdButton);
     }
 
     public void TalkTo(RbyTile target, Action preferredDirection = Action.None, Joypad holdButton = Joypad.None) {
@@ -423,11 +412,10 @@ public class RbyForce : Rby {
                         Inject(joypad);
                         bool turnframe = CpuRead("wCheckFor180DegreeTurn") == 1;
                         while((ret = Hold(turnframe ? joypad : Joypad.None, SYM["OverworldLoopLessDelay.newBattle"] + 3, SYM["CollisionCheckOnLand.collision"], SYM["CollisionCheckOnWater.collision"], SYM["DisplayRepelWoreOffText"], SYM["TryWalking"])) == SYM["TryWalking"]) {
-                            D = 0x00;
-                            E = 0x00;
+                            HandleNpcMovement();
                             RunFor(1);
                         }
-                        if(ret==SYM["DisplayRepelWoreOffText"]) {
+                        if(ret == SYM["DisplayRepelWoreOffText"]) {
                             ClearText();
                         }
 
@@ -446,15 +434,14 @@ public class RbyForce : Rby {
                         } else if(ret == SYM["PrintLetterDelay"]) {
                             break;
                         } else if(ret == SYM["TryWalking"]) {
-                            D = 0x00;
-                            E = 0x00;
+                            HandleNpcMovement();
                         } else {
                             directionalWarp = false;
                         }
                     } while((CpuRead("wd730") & 0xa0) > 0);
                     break;
                 default:
-                    base.Execute(new[]{action}, tileCallbacks);
+                    base.Execute(new[] { action }, tileCallbacks);
                     break;
             }
             previous = action;
@@ -858,8 +845,7 @@ public class RbyForce : Rby {
         RunFor(1);
         RunUntil("DisableLCD");
         while(RunUntil("TryWalking", "Joypad") == SYM["TryWalking"]) {
-            D = 0x00;
-            E = 0x00;
+            HandleNpcMovement();
             RunFor(1);
         }
     }
@@ -955,8 +941,7 @@ public class RbyForce : Rby {
         MenuPress(Joypad.B);
     }
 
-    public void ChooseQuantity(int quantity)
-    {
+    public void ChooseQuantity(int quantity) {
         while(quantity < 1) { // 0 for max amount, -1 for max minus one, etc.
             MenuPress(Joypad.Down);
             quantity++;
@@ -1005,8 +990,11 @@ public class RbyForce : Rby {
         foreach(string mon in pokemons) {
             RAMStream stream = From("wNumInBox");
             byte[] box = stream.Read(stream.u8());
+            int slot = Array.IndexOf(box, Species[mon].Id);
+            Debug.Assert(slot != -1, "Unable to find the pokemon " + mon);
+
             ChooseMenuItem(0);
-            ChooseListItem(Array.IndexOf(box, Species[mon].Id));
+            ChooseListItem(slot);
             ChooseMenuItem(0);
             ClearText();
         }
@@ -1044,9 +1032,9 @@ public class RbyForce : Rby {
 
             byte item = Items[items[i].ToString()].Id;
             int quantity = (int) items[i + 1];
-
             int slot = Array.IndexOf(box, item);
-            Debug.Assert(slot != -1, "Unable to find item " + items[i].ToString() + " ");
+            Debug.Assert(slot != -1, "Unable to find the item " + items[i].ToString());
+
             ChooseListItem(slot);
             ClearText();
             if(CpuReadLE<ushort>(SP + 2) == SYM["DisplayChooseQuantityMenu.waitForKeyPressLoop"] + 0x3)
@@ -1054,5 +1042,86 @@ public class RbyForce : Rby {
         }
         MenuPress(Joypad.B);
         ClearText();
+    }
+
+    public void MoveNpc(RbySprite npc, Action movement) {
+        if(npc != null) {
+            NpcMovements[npc] = movement;
+            int offset = (npc.SpriteId + 1) * 0x10;
+            CpuWrite(SYM["wSpritePlayerStateData1MovementStatus"] + offset, 1);
+        }
+    }
+
+    public void MoveNpc(int id, Action movement) {
+        MoveNpc(Map.Sprites[id], movement);
+    }
+
+    public void MoveNpc(string map, int id, Action movement) {
+        MoveNpc(Maps[map].Sprites[id], movement);
+    }
+
+    public void MoveNpc(int x, int y, Action movement) {
+        MoveNpc(Map.Sprites[x, y], movement);
+    }
+
+    public void MoveNpc(int map, int x, int y, Action movement) {
+        MoveNpc(Maps[map].Sprites[x, y], movement);
+    }
+
+    public void MoveNpc(string map, int x, int y, Action movement) {
+        MoveNpc(Maps[map].Sprites[x, y], movement);
+    }
+
+    protected void HandleNpcMovement() {
+        int offset = CpuRead("hCurrentSpriteOffset");
+        RbySprite npc = Map.Sprites[offset / 0x10 - 1];
+        Action direction = NpcMovements.GetValueOrDefault(npc);
+
+        if(direction != Action.None) {
+            switch(direction) {
+                case Action.Right:
+                    D = 0;
+                    E = 1;
+                    B = (byte) RbySpriteMovement.MovingRight;
+                    C = (byte) RbySpriteMovement.FacingRight;
+                    break;
+                case Action.Left:
+                    D = 0;
+                    E = -1;
+                    B = (byte) RbySpriteMovement.MovingLeft;
+                    C = (byte) RbySpriteMovement.FacingLeft;
+                    break;
+                case Action.Up:
+                    D = -1;
+                    E = 0;
+                    B = (byte) RbySpriteMovement.MovingUp;
+                    C = (byte) RbySpriteMovement.FacingUp;
+                    break;
+                case Action.Down:
+                    D = 1;
+                    E = 0;
+                    B = (byte) RbySpriteMovement.MovingDown;
+                    C = (byte) RbySpriteMovement.FacingDown;
+                    break;
+            }
+            CpuWrite(SYM["wSpritePlayerStateData2MovementByte1"] + offset, (byte) RbySpriteMovement.Walk);
+
+            RunUntil(SYM["TryWalking"] + 0x19);
+            if((F & 0x10) == 0) {
+                // movement succeeded
+                NpcMovements.Remove(npc);
+            } else {
+                // movement failed, try again
+                CpuWrite(SYM["wSpritePlayerStateData2MovementDelay"] + offset, 1);
+            }
+        } else {
+            // block movement
+            D = 0;
+            E = 0;
+            RunUntil(SYM["TryWalking"] + 0x19);
+            F |= 0x10;
+            CpuWrite(SYM["wSpritePlayerStateData1MovementStatus"] + offset, 2);
+            CpuWrite(SYM["wSpritePlayerStateData2MovementByte1"] + offset, (byte) RbySpriteMovement.Stay);
+        }
     }
 }
