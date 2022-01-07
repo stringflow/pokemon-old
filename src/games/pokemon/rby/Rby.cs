@@ -317,10 +317,16 @@ public partial class Rby : PokemonGame {
     }
 
     public new(Joypad Input, int Amount) CalcScroll(int target, int current, int max, bool wrapping) {
-        if(CpuReadLE<ushort>(SP + 6) == (SYM["SelectMenuItem.select"] & 0xffff) + 0x8) {
+        int caller = CpuReadLE<ushort>(SP + 6);
+        if(caller == (SYM["SelectMenuItem.select"] & 0xffff) + 0x8) {
             // The move selection is its own thing for some reason, so the input values are wrong have to be adjusted.
             current--;
             max = CpuRead("wNumMovesMinusOne");
+            wrapping = true;
+        }
+        else if(caller == (IsYellow ? SYM["RedisplayStartMenu_DoNotDrawStartMenu.loop"] : SYM["RedisplayStartMenu.loop"]) + 0x3) {
+            // Same for the start menu
+            max--;
             wrapping = true;
         }
 

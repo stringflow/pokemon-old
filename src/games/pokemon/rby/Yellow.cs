@@ -262,7 +262,7 @@ public class Yellow : Rby {
 
     public override void SelectMenuItem(int target, Joypad direction = Joypad.None) {
         RunUntil("_Joypad", "HandleMenuInput_.getJoypadState");
-        MenuScroll(target, Joypad.Select | direction, true);
+        MenuScroll(target, Joypad.Select | direction, false);
     }
 
     public override void ChooseListItem(int target, Joypad direction = Joypad.None) {

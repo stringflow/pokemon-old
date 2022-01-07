@@ -219,7 +219,6 @@ public partial class Rby {
     }
 
     public void ListScroll(int target, Joypad clickInput, bool clickWithScroll) {
-        // TODO: Not sure if this code is all correct
         var scroll = CalcScroll(target, CpuRead("wCurrentMenuItem") + CpuRead("wListScrollOffset"), CpuRead("wListCount"), false);
 
         for(int i = 0; i < scroll.Amount - 1; i++) {
@@ -227,16 +226,16 @@ public partial class Rby {
         }
 
         byte menuItem = CpuRead("wCurrentMenuItem");
-        bool canClickWithScroll = clickWithScroll && (menuItem == 1 || (menuItem == 0 && scroll.Input == Joypad.Down) || (menuItem == 2 && scroll.Input == Joypad.Down));
+        bool canClickWithScroll = clickWithScroll && (menuItem == 1 || (menuItem == 0 && scroll.Input == Joypad.Down) || (menuItem == 2 && scroll.Input == Joypad.Up));
 
         if(scroll.Amount == 0) {
             MenuPress(clickInput | Joypad.Left, true);
         } else {
             if(canClickWithScroll) {
+                MenuPress(scroll.Input | clickInput, true);
+            } else {
                 MenuPress(scroll.Input | Joypad.Start, true);
                 MenuPress(clickInput, true);
-            } else {
-                MenuPress(scroll.Input | clickInput, true);
             }
         }
     }
