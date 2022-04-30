@@ -83,8 +83,8 @@ public abstract class Tile<M, T> where M : Map<M, T>
     public abstract bool LedgeCheck(T ledgeTile, Action action);
     public abstract (T TileToWarpTo, Action ActionRequired) WarpCheck();
     public abstract bool IsDoorTile();
-    public abstract bool CollisionCheckLand(T dest, byte[] overworldMap, Action action, bool allowTrainerVision);
-    public abstract bool CollisionCheckWater(T dest, byte[] overworldMap, Action action, bool allowTrainerVision);
+    public abstract bool CollisionCheckLand(PokemonGame gb, T dest, byte[] overworldMap, Action action, bool allowTrainerVision);
+    public abstract bool CollisionCheckWater(PokemonGame gb, T dest, byte[] overworldMap, Action action, bool allowTrainerVision);
 
     public T DoorCheck() {
         return IsDoorTile() ? GetNeighbor(Action.Down) : (T) this;

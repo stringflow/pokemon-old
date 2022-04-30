@@ -47,6 +47,7 @@ public class RbySprite {
     public RbySprite(RbySprite baseSprite, ReadStream data) {
         Map = baseSprite.Map;
         SpriteId = baseSprite.SpriteId;
+        PictureId = baseSprite.PictureId;
         Y = baseSprite.Y;
         X = baseSprite.X;
         Movement = baseSprite.Movement;
@@ -55,6 +56,9 @@ public class RbySprite {
         IsItem = baseSprite.IsItem;
         Direction = baseSprite.Direction;
         Range = baseSprite.Range;
+        CanBeMissable = baseSprite.CanBeMissable;
+        MissableAddress = baseSprite.MissableAddress;
+        MissableBit = baseSprite.MissableBit;
     }
 
     public RbySprite(Rby game, RbyMap map, byte spriteId, ReadStream data) {

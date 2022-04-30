@@ -128,19 +128,19 @@ public class RbyTile : Tile<RbyMap, RbyTile> {
         return Array.IndexOf(Map.Tileset.DoorTiles, Collision) != -1;
     }
 
-    public override bool CollisionCheckLand(RbyTile dest, byte[] collisionMap, Action action, bool allowTrainerVision) {
-        return CollisionCheck(dest, collisionMap, allowTrainerVision, Map.Tileset.LandPermissions, Map.Tileset.TilePairCollisionsLand);
+    public override bool CollisionCheckLand(PokemonGame gb, RbyTile dest, byte[] collisionMap, Action action, bool allowTrainerVision) {
+        return CollisionCheck((Rby) gb, dest, collisionMap, allowTrainerVision, Map.Tileset.LandPermissions, Map.Tileset.TilePairCollisionsLand);
     }
 
-    public override bool CollisionCheckWater(RbyTile dest, byte[] collisionMap, Action action, bool allowTrainerVision) {
-        return CollisionCheck(dest, collisionMap, allowTrainerVision, Map.Tileset.WaterPermissions, Map.Tileset.TilePairCollisionsWater);
+    public override bool CollisionCheckWater(PokemonGame gb, RbyTile dest, byte[] collisionMap, Action action, bool allowTrainerVision) {
+        return CollisionCheck((Rby) gb, dest, collisionMap, allowTrainerVision, Map.Tileset.WaterPermissions, Map.Tileset.TilePairCollisionsWater);
     }
 
-    public bool CollisionCheck(RbyTile dest, byte[] collisionMap, bool allowTrainerVision, PermissionSet permissions, List<int> tilePairCollisions) {
+    public bool CollisionCheck(Rby gb, RbyTile dest, byte[] collisionMap, bool allowTrainerVision, PermissionSet permissions, List<int> tilePairCollisions) {
         if(dest == null) return false;
         if(!IsTilePassable(collisionMap, dest, permissions, tilePairCollisions)) return false;
-        if(IsCollidingWithSprite(dest, collisionMap != null)) return false;
-        if(!allowTrainerVision && IsMovingIntoTrainerVision(dest)) return false; // allow moving into trainer vision on the end tile
+        if(IsCollidingWithSprite(gb, dest, collisionMap != null)) return false;
+        if(!allowTrainerVision && IsMovingIntoTrainerVision(gb, dest)) return false; // allow moving into trainer vision on the end tile
         if(BlockSpinningTiles(dest)) return false;
         return true;
     }
@@ -159,39 +159,29 @@ public class RbyTile : Tile<RbyMap, RbyTile> {
         return true;
     }
 
-    private bool IsCollidingWithSprite(RbyTile dest, bool readFromRam) {
+    private bool IsCollidingWithSprite(Rby gb, RbyTile dest, bool readFromRam) {
         if(readFromRam) {
-            for(int spriteIndex = 1; spriteIndex < (Map.Game.IsYellow ? 15 : 16); spriteIndex++) {
+            for(int spriteIndex = 1; spriteIndex < (gb.IsYellow ? 15 : 16); spriteIndex++) {
                 RbySprite sprite = dest.Map.Sprites[spriteIndex - 1];
-                if(!IsSpriteHidden(sprite)) {
-                    int spriteX = Map.Game.CpuRead(0xc205 | (spriteIndex << 4)) - 4;
-                    int spriteY = Map.Game.CpuRead(0xc204 | (spriteIndex << 4)) - 4;
+                if(!IsSpriteHidden(gb, sprite)) {
+                    int spriteX = gb.CpuRead(gb.SYM["wSpritePlayerStateData2MapX"] | (spriteIndex << 4)) - 4;
+                    int spriteY = gb.CpuRead(gb.SYM["wSpritePlayerStateData2MapY"] | (spriteIndex << 4)) - 4;
                     if(spriteX == dest.X && spriteY == dest.Y) return true;
                 }
             }
         } else {
             foreach(RbySprite sprite in dest.Map.Sprites) {
-                if(!IsSpriteHidden(sprite) && sprite.X == dest.X && sprite.Y == dest.Y) return true;
+                if(!IsSpriteHidden(gb, sprite) && sprite.X == dest.X && sprite.Y == dest.Y) return true;
             }
         }
 
         return false;
     }
 
-    private bool IsSpriteHidden(RbySprite sprite) {
-        if(sprite == null) return false;
-
-        return sprite.CanBeMissable && (Map.Game.CpuRead(sprite.MissableAddress) & (1 << sprite.MissableBit)) > 0;
-    }
-
-    private bool BlockSpinningTiles(RbyTile dest) {
-        // TODO: Handle them properly ecks dee
-        return dest.Map.Tileset.Id == 7 && (dest.Collision == 0x3c || dest.Collision == 0x3d || dest.Collision == 0x4c || dest.Collision == 0x4d);
-    }
-
-    private bool IsMovingIntoTrainerVision(RbyTile tile) {
+    private bool IsMovingIntoTrainerVision(Rby gb, RbyTile tile) {
         foreach(RbyTrainer trainer in tile.Map.Trainers) {
-            if((Map.Game.CpuRead(trainer.EventFlagAddress) & (1 << trainer.EventFlagBit)) != 0) continue;
+            if(IsSpriteHidden(gb, trainer)) continue;
+            if(trainer.IsDefeated(gb)) continue;
 
             int range = trainer.SightRange;
             if(trainer.Direction == Action.Down && tile.Y - trainer.Y == 4) range--;
@@ -206,6 +196,17 @@ public class RbyTile : Tile<RbyMap, RbyTile> {
         }
 
         return false;
+    }
+
+    private bool IsSpriteHidden(Rby gb, RbySprite sprite) {
+        if(sprite == null) return false;
+
+        return sprite.CanBeMissable && (gb.CpuRead(sprite.MissableAddress) & (1 << sprite.MissableBit)) > 0;
+    }
+
+    private bool BlockSpinningTiles(RbyTile dest) {
+        // TODO: Handle them properly ecks dee
+        return dest.Map.Tileset.Id == 7 && (dest.Collision == 0x3c || dest.Collision == 0x3d || dest.Collision == 0x4c || dest.Collision == 0x4d);
     }
 }
 
@@ -300,12 +301,14 @@ public class RbyMap : Map<RbyMap, RbyTile> {
         byte numSprites = objectData.u8();
         for(byte i = 0; i < numSprites; i++) {
             RbySprite sprite = new RbySprite(game, this, i, objectData);
-            Sprites.Add(sprite);
             if(sprite.IsTrainer) {
-                Trainers.Add(new RbyTrainer(sprite, objectData));
+                sprite = new RbyTrainer(sprite, objectData);
+                Trainers.Add((RbyTrainer) sprite);
             } else if(sprite.IsItem) {
-                ItemBalls.Add(new RbyItemBall(sprite, objectData));
+                sprite = new RbyItemBall(sprite, objectData);
+                ItemBalls.Add((RbyItemBall) sprite);
             }
+            Sprites.Add(sprite);
         }
 
         Tiles = new RbyTile[Width * 2, Height * 2];

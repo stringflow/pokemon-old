@@ -39,12 +39,12 @@ public static class Pathfinding {
 
                 if(neighborTile == null || (additionallyBlockedTiles != null && Array.IndexOf(additionallyBlockedTiles, neighborTile) != -1)) continue;
 
-                bool landCollision = !currentTile.CollisionCheckLand(neighborTile, neighborTile.Map.Id == startTile.Map.Id ? collisionMap : null, action, neighborTile == endTile);
+                bool landCollision = !currentTile.CollisionCheckLand(gb, neighborTile, neighborTile.Map.Id == startTile.Map.Id ? collisionMap : null, action, neighborTile == endTile);
 
                 if(!surfing) {
                     if(landCollision) continue;
                 } else {
-                    bool waterCollision = !currentTile.CollisionCheckWater(neighborTile, neighborTile.Map.Id == startTile.Map.Id ? collisionMap : null, action, neighborTile == endTile);
+                    bool waterCollision = !currentTile.CollisionCheckWater(gb, neighborTile, neighborTile.Map.Id == startTile.Map.Id ? collisionMap : null, action, neighborTile == endTile);
                     if(waterCollision && !(!landCollision && neighborTile == endTile)) continue;
                 }
 
@@ -165,7 +165,7 @@ public static class Pathfinding {
                 }
 
                 // TODO: Check if this does tile pair collision correctly
-                bool landCollision = !sourceTile.CollisionCheckLand(neighborTile, null, action, false);
+                bool landCollision = !sourceTile.CollisionCheckLand(gb, neighborTile, null, action, false);
                 if(landCollision) continue;
 
                 // TODO: Bike, Surfing
@@ -251,7 +251,7 @@ public static class Pathfinding {
 
         Bitmap bitmap = map.Render();
         foreach(T tile in map.Tiles) {
-            if(tile.Edges.Count == 0) continue;
+            if(!tile.Edges.ContainsKey(edgeSet)) continue;
             int minCost = tile.Edges[edgeSet].Min(n => n.Cost);
             foreach(Edge<M, T> edge in tile.Edges[edgeSet]) {
                 if(edge.Cost == minCost && DebugArrows.ContainsKey(edge.Action)) {

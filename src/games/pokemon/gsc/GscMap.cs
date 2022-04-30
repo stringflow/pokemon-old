@@ -53,6 +53,10 @@ public class GscConnection : Connection<GscMap, GscTile> {
 
 public class GscTile : Tile<GscMap, GscTile> {
 
+    public string PokeworldLink {
+        get { return "https://gunnermaniac.com/pokeworld2?local=" + Map.Id + "#" + X + "/" + Y; }
+    }
+
     public override int CalcStepCost(bool onBike, bool ledgeHop, bool warp, Action action) {
         int stepCost = onBike ? 9 : 17;
 
@@ -94,19 +98,19 @@ public class GscTile : Tile<GscMap, GscTile> {
         return Array.IndexOf(doors, Collision) != -1;
     }
 
-    public override bool CollisionCheckLand(GscTile dest, byte[] collisionMap, Action action, bool allowTrainerVision) {
-        return CollisionCheck(dest, collisionMap, action, allowTrainerVision, dest.Map.Tileset.LandPermissions);
+    public override bool CollisionCheckLand(PokemonGame gb, GscTile dest, byte[] collisionMap, Action action, bool allowTrainerVision) {
+        return CollisionCheck((Gsc) gb, dest, collisionMap, action, allowTrainerVision, dest.Map.Tileset.LandPermissions);
     }
 
-    public override bool CollisionCheckWater(GscTile dest, byte[] collisionMap, Action action, bool allowTrainerVision) {
-        return CollisionCheck(dest, collisionMap, action, allowTrainerVision, dest.Map.Tileset.WaterPermissions);
+    public override bool CollisionCheckWater(PokemonGame gb, GscTile dest, byte[] collisionMap, Action action, bool allowTrainerVision) {
+        return CollisionCheck((Gsc) gb, dest, collisionMap, action, allowTrainerVision, dest.Map.Tileset.WaterPermissions);
     }
 
-    private bool CollisionCheck(GscTile dest, byte[] collisionMap, Action action, bool allowTrainerVision, PermissionSet permissions) {
+    private bool CollisionCheck(Gsc gb, GscTile dest, byte[] collisionMap, Action action, bool allowTrainerVision, PermissionSet permissions) {
         if(dest == null) return false;
         if(!IsTilePassable(collisionMap, dest, action, permissions)) return false;
-        if(IsCollidingWithSprite(dest, collisionMap != null)) return false;
-        if(!allowTrainerVision && IsMovingIntoTrainerVision(dest)) return false;
+        if(IsCollidingWithSprite(gb, dest, collisionMap != null)) return false;
+        if(!allowTrainerVision && IsMovingIntoTrainerVision(gb, dest)) return false;
         return true;
     }
 
@@ -132,30 +136,30 @@ public class GscTile : Tile<GscMap, GscTile> {
         return true;
     }
 
-    private bool IsCollidingWithSprite(GscTile dest, bool readFromRam) {
+    private bool IsCollidingWithSprite(Gsc gb, GscTile dest, bool readFromRam) {
         if(readFromRam) {
             for(int spriteIndex = 1; spriteIndex < 16; spriteIndex++) {
                 GscSprite sprite = dest.Map.Sprites[spriteIndex - 1];
-                if(sprite != null && !IsSpriteHidden(sprite)) {
-                    int spriteX = Map.Game.CpuRead(0xd701 | ((spriteIndex + 2) << 4)) - 4;
-                    int spriteY = Map.Game.CpuRead(0xd700 | ((spriteIndex + 2) << 4)) - 4;
+                if(sprite != null && !IsSpriteHidden(gb, sprite)) {
+                    int spriteX = gb.CpuRead(0xd701 | ((spriteIndex + 2) << 4)) - 4;
+                    int spriteY = gb.CpuRead(0xd700 | ((spriteIndex + 2) << 4)) - 4;
                     if(spriteX == dest.X && spriteY == dest.Y) return true;
                 }
             }
         } else {
             foreach(GscSprite sprite in dest.Map.Sprites) {
-                if(!IsSpriteHidden(sprite) && sprite.X == dest.X && sprite.Y == dest.Y) return true;
+                if(!IsSpriteHidden(gb, sprite) && sprite.X == dest.X && sprite.Y == dest.Y) return true;
             }
         }
 
         return false;
     }
 
-    private bool IsMovingIntoTrainerVision(GscTile dest) {
+    private bool IsMovingIntoTrainerVision(Gsc gb, GscTile dest) {
         foreach(GscSprite sprite in Map.Sprites) {
             if(sprite.Function != GscSpriteType.Trainer) continue;
-            if(IsSpriteHidden(sprite)) continue;
-            if(IsTrainerDefeated(sprite)) continue;
+            if(IsSpriteHidden(gb, sprite)) continue;
+            if(IsTrainerDefeated(gb, sprite)) continue;
             if(sprite.IsSpinner) continue;
 
             GscTile current = sprite.Map[sprite.X, sprite.Y];
@@ -170,18 +174,18 @@ public class GscTile : Tile<GscMap, GscTile> {
         return false;
     }
 
-    private bool IsSpriteHidden(GscSprite sprite) {
-        return CheckEventFlag(sprite.EventFlag);
+    private bool IsSpriteHidden(Gsc gb, GscSprite sprite) {
+        return CheckEventFlag(gb, sprite.EventFlag);
     }
 
-    private bool IsTrainerDefeated(GscSprite sprite) {
-        return CheckEventFlag(Map.Game.ROM.u16le((sprite.Map.Scripts & 0xff0000) | sprite.ScriptPointer));
+    private bool IsTrainerDefeated(Gsc gb, GscSprite sprite) {
+        return CheckEventFlag(gb, gb.ROM.u16le((sprite.Map.Scripts & 0xff0000) | sprite.ScriptPointer));
     }
 
-    private bool CheckEventFlag(int flag) {
+    private bool CheckEventFlag(Gsc gb, int flag) {
         int offs = flag / 8;
         int bit = flag % 8;
-        return (Map.Game.CpuRead(Map.Game.SYM["wEventFlags"] + offs) & (1 << bit)) > 0;
+        return (gb.CpuRead(Map.Game.SYM["wEventFlags"] + offs) & (1 << bit)) > 0;
     }
 }
 

@@ -1118,7 +1118,7 @@ public class RbyForce : Rby {
             // block movement
             D = 0;
             E = 0;
-            RunUntil(SYM["TryWalking"] + 0x19);
+            RunUntil(SYM["TryWalking"] + (IsYellow ? 0x0B : 0x19));
             F |= 0x10;
             CpuWrite(SYM["wSpritePlayerStateData1MovementStatus"] + offset, 2);
             CpuWrite(SYM["wSpritePlayerStateData2MovementByte1"] + offset, (byte) RbySpriteMovement.Stay);

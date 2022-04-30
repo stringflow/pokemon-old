@@ -64,6 +64,6 @@ public class RbyTrainer : RbySprite {
     }
 
     public bool IsDefeated(GameBoy gb) {
-        return (gb.CpuRead(EventFlagAddress) & EventFlagBit) == 0;
+        return (gb.CpuRead(EventFlagAddress) & (1 << EventFlagBit)) != 0;
     }
 }
